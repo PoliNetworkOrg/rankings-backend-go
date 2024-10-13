@@ -11,9 +11,10 @@ import (
 func GetDefaultLogger() *slog.Logger {
 	logger := slog.New(
 		tint.NewHandler(os.Stderr, &tint.Options{
+			AddSource:  true,
 			Level:      slog.LevelDebug,
 			TimeFormat: time.Kitchen,
 		}))
 
-  return logger
+	return logger
 }
