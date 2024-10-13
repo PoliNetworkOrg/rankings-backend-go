@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log/slog"
-	"os"
+  "os"
+  "log/slog"
 	"path/filepath"
-	"time"
 
-	"github.com/lmittmann/tint"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
+  "github.com/lmittmann/tint"
 	"github.com/pborman/getopt/v2"
 )
 
@@ -14,21 +14,7 @@ type Opts struct {
 	dataDir string
 }
 
-func doFolderExists(path string) (bool, error) {
-	stat, err := os.Stat(path)
-
-	if err == nil {
-		return stat.IsDir(), nil
-	}
-
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-	return false, err
-}
-
-func parseOpts() Opts {
+func ParseOpts() Opts {
 	opts := Opts{}
 
 	// definition
@@ -50,7 +36,7 @@ func parseOpts() Opts {
 	}
 	opts.dataDir = absDataDir
 
-	dataDirExists, err := doFolderExists(opts.dataDir)
+	dataDirExists, err := utils.DoFolderExists(opts.dataDir)
 
 	if !dataDirExists {
 		slog.Error("You must set the --data-dir flag to an existing directory.")
@@ -62,18 +48,4 @@ func parseOpts() Opts {
 	}
 
 	return opts
-}
-
-func main() {
-	slog.SetDefault(
-		slog.New(
-			tint.NewHandler(os.Stderr, &tint.Options{
-				Level:      slog.LevelDebug,
-				TimeFormat: time.Kitchen,
-			}),
-		))
-
-	opts := parseOpts()
-
-	slog.Info("argv validation", "data_dir", opts.dataDir)
 }
