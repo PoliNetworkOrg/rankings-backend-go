@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 )
 
 func GetDefaultLogger() *slog.Logger {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
+	w := os.Stderr
+
+	return slog.New(
+		tint.NewHandler(w, &tint.Options{
 			AddSource:  true,
 			Level:      slog.LevelDebug,
 			TimeFormat: time.Kitchen,
+			NoColor: !isatty.IsTerminal(w.Fd()),
 		}))
-
-	return logger
 }
