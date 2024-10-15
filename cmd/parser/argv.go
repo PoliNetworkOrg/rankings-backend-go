@@ -29,6 +29,11 @@ func ParseOpts() Opts {
 		os.Exit(0)
 	}
 
+	if *dataDir == "" {
+		slog.Error("You must set the --data-dir flag to an existing directory.")
+		os.Exit(2)
+	}
+
 	absDataDir, err := filepath.Abs(*dataDir)
 	if err != nil {
 		tint.Err(err)
