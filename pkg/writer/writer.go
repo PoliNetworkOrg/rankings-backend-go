@@ -25,7 +25,7 @@ func (w *Writer[T]) GetFilePath(filename string) string {
 	return path.Join(w.DirPath, filename)
 }
 
-func (w *Writer[T]) Write(data []byte, filename string) error {
+func (w *Writer[T]) Write(filename string, data []byte) error {
 	p := w.GetFilePath(filename)
 	return os.WriteFile(p, data, 0664)
 }
@@ -35,7 +35,7 @@ func (w *Writer[T]) Read(filename string) ([]byte, error) {
 	return os.ReadFile(p)
 }
 
-func (w *Writer[T]) JsonWrite(data T, filename string, indent bool) error {
+func (w *Writer[T]) JsonWrite(filename string, data T, indent bool) error {
 	var bytes []byte
 	var err error
 
@@ -49,7 +49,7 @@ func (w *Writer[T]) JsonWrite(data T, filename string, indent bool) error {
 		return err
 	}
 
-	return w.Write(bytes, filename)
+	return w.Write(filename, bytes)
 }
 
 func (w *Writer[T]) JsonRead(filename string) (T, error) {

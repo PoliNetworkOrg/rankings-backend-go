@@ -71,12 +71,12 @@ func WriteReadParseCar() {
 	}
 
 	w, err := writer.NewWriter[Car](tmpFolder)
-	err = w.JsonWrite(car1, "car1.json", false)
+	err = w.JsonWrite("car1.json", car1, false)
 	if err != nil {
 		panic(err)
 	}
 
-	err = w.JsonWrite(car1, "car1_indent.json", false)
+	err = w.JsonWrite("car1_indent.json", car1, false)
 	if err != nil {
 		panic(err)
 	}

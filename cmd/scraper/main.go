@@ -45,7 +45,7 @@ func main() {
 	if scraped {
 		slog.Info("scraped manifesti", "found", len(mans))
 
-		err = mansWriter.JsonWrite(mans, constants.OutputManifestiListFilename, false)
+		err = mansWriter.JsonWrite(constants.OutputManifestiListFilename, mans, false)
 		if err != nil {
 			panic(err)
 		}
