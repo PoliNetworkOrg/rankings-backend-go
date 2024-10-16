@@ -1,25 +1,26 @@
 package main
 
 import (
-  "os"
-  "log/slog"
+	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
-  "github.com/lmittmann/tint"
+	"github.com/lmittmann/tint"
 	"github.com/pborman/getopt/v2"
 )
 
 type Opts struct {
-	dataDir string
+	dataDir  string
+	isTmpDir bool
 }
 
 func ParseOpts() Opts {
-	opts := Opts{}
+	tmpDir, _ := utils.TmpDirectory() // we don't care if err
 
 	// definition
 	help := getopt.BoolLong("help", 'h', "Shows the help menu")
-	dataDir := getopt.StringLong("data-dir", 'd', "", "Path of the data folder (containing html, json, ...)")
+	dataDir := getopt.StringLong("data-dir", 'd', tmpDir, "Path of the data folder (containing html, json, ...). Defaults to tmp directory")
 
 	// parsing
 	getopt.Parse()
@@ -29,20 +30,13 @@ func ParseOpts() Opts {
 		os.Exit(0)
 	}
 
-	if *dataDir == "" {
-		slog.Error("You must set the --data-dir flag to an existing directory.")
-		os.Exit(2)
-	}
-
 	absDataDir, err := filepath.Abs(*dataDir)
 	if err != nil {
 		tint.Err(err)
 		os.Exit(1)
 	}
-	opts.dataDir = absDataDir
 
-	dataDirExists, err := utils.DoFolderExists(opts.dataDir)
-
+	dataDirExists, err := utils.DoFolderExists(absDataDir)
 	if !dataDirExists {
 		slog.Error("You must set the --data-dir flag to an existing directory.")
 		os.Exit(2)
@@ -52,5 +46,8 @@ func ParseOpts() Opts {
 		os.Exit(1)
 	}
 
-	return opts
+	return Opts{
+		dataDir:  absDataDir,
+		isTmpDir: absDataDir == tmpDir,
+	}
 }
