@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -70,9 +73,22 @@ func ParseLocalOrScrapeManifesti(w *writer.Writer[[]scraper.Manifesto], force bo
 
 	local, err := w.JsonRead(fn)
 	if err != nil {
-		slog.Error("Failed to read from manifesti json file", "error", err)
-		return scraper.ScrapeManifesti(), true
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+				slog.Info(fmt.Sprintf("%s file not found, running scraper...", fn))
+			return scraper.ScrapeManifesti(), true
+		case errors.As(err, new(*json.SyntaxError)):
+			slog.Error(fmt.Sprintf("%s contains malformed JSON, running scraper...", fn))
+			return scraper.ScrapeManifesti(), true
+		case errors.As(err, new(*json.UnmarshalTypeError)):
+			slog.Error(fmt.Sprintf("%s contains JSON not compatible with the Manifesto struct, running scraper...", fn))
+			return scraper.ScrapeManifesti(), true
+		default:
+			slog.Error("Failed to read from manifesti json file, running scraper...", "error", err)
+			return scraper.ScrapeManifesti(), true
+		}
 	}
+
 	if len(local) == 0 {
 		slog.Info(fmt.Sprintf("%s file is empty, running scraper...", fn))
 		return scraper.ScrapeManifesti(), true
