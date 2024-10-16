@@ -1,11 +1,6 @@
 package writer
 
 import (
-	"encoding/json"
-	"os"
-	"path"
-
-	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
 )
 
@@ -17,10 +12,6 @@ type (
 
 type ManifestiJson struct {
 	Data map[string]courseMap // json output structure
-}
-
-func ManifestiFilePath(dataDir string) string {
-	return path.Join(dataDir, constants.OutputBaseFolder, constants.OutputManifestiFilename)
 }
 
 func groupByDegreeType(mans []scraper.Manifesto) degreeMap {
@@ -47,42 +38,6 @@ func groupByCourse(mans []scraper.Manifesto) courseMap {
 	}
 
 	return out
-}
-
-func ReadManifestiJsonFile(dataDir string) ([]byte, error) {
-	return os.ReadFile(ManifestiFilePath(dataDir))
-}
-
-func ParseManifestiJson(data []byte) (ManifestiJson, error) {
-	var out ManifestiJson
-
-	err := json.Unmarshal(data, &out.Data)
-	if err != nil {
-		return NewManifestiJson([]scraper.Manifesto{}), err
-	}
-
-	return out, nil
-}
-
-func NewManifestiJson(mans []scraper.Manifesto) ManifestiJson {
-	byDegType := groupByDegreeType(mans)
-	data := make(map[string]courseMap, len(byDegType))
-	for k, v := range byDegType {
-		mapped := groupByCourse(v)
-		data[k] = mapped
-	}
-
-	return ManifestiJson{Data: data}
-}
-
-func (m *ManifestiJson) Write(dataDir string) error {
-	j, err := json.MarshalIndent(m.Data, "", "	")
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(ManifestiFilePath(dataDir), j, 0644)
-	return err
 }
 
 func (m *ManifestiJson) GetSlice() []scraper.Manifesto {

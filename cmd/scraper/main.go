@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
@@ -28,67 +32,103 @@ func main() {
 		slog.Info("Argv validation", "data_dir", opts.dataDir)
 	}
 
-	mans := ParseLocalOrScrapeManifesti(opts.dataDir, opts.force)
-	manJson := writer.NewManifestiJson(mans)
-	err = manJson.Write(opts.dataDir)
+	mansWriter, err := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
+	mans, scraped := ParseLocalOrScrapeManifesti(&mansWriter, opts.force)
 	if err != nil {
 		panic(err)
 	}
 
-	manEquals, err := DoLocalEqualsRemoteManifesti(opts.dataDir)
+	if scraped {
+		slog.Info("scraped manifesti", "found", len(mans))
+
+		err = mansWriter.JsonWrite(mans, constants.OutputManifestiFilename, false)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		slog.Info("parsed manifesti", "found", len(mans))
+	}
+
+	manEquals, err := DoLocalEqualsRemoteManifesti(&mansWriter)
+	if err != nil {
+		panic(err)
+	}
+
 	slog.Info("Scrape manifesti, equals to remote version??", "equals", manEquals)
 }
 
-func ParseLocalOrScrapeManifesti(dataDir string, force bool) []scraper.Manifesto {
+func ParseLocalOrScrapeManifesti(w *writer.Writer[[]scraper.Manifesto], force bool) ([]scraper.Manifesto, bool) {
 	if force {
 		slog.Info("Scraping manifesti because of -f flag")
-		return scraper.ScrapeManifesti()
+		return scraper.ScrapeManifesti(), true
 	}
 
-	mansB, err := writer.ReadManifestiJsonFile(dataDir)
+	local, err := w.JsonRead(constants.OutputManifestiFilename)
 	if err != nil {
-		slog.Error("Failed to read bytes from manifesti json file", "error", err)
-		return scraper.ScrapeManifesti()
+		slog.Error("Failed to read from manifesti json file", "error", err)
+		return scraper.ScrapeManifesti(), true
 	}
-	if len(mansB) == 0 {
-		slog.Info("Scraping manifesti, since saved file bytes slice is empty", "bytes", mansB)
-		return scraper.ScrapeManifesti()
-	}
-
-	j, err := writer.ParseManifestiJson(mansB)
-	if err != nil {
-		slog.Error("Failed to parse manifesti json file", "error", err)
-		return scraper.ScrapeManifesti()
+	if len(local) == 0 {
+		slog.Info("Scraping manifesti, since saved file data is empty")
+		return scraper.ScrapeManifesti(), true
 	}
 
-	parsed := j.GetSlice()
-	if len(j.Data) == 0 || len(parsed) == 0 {
-		slog.Info("Scraping manifesti, since parsed data from saved file is empty", "data", j.Data, "parsed", parsed)
-		return scraper.ScrapeManifesti()
-	}
-
-	return parsed
+	return local, false
 }
 
-func DoLocalEqualsRemoteManifesti(dataDir string) (bool, error) {
-	manBytes, err := writer.ReadManifestiJsonFile(dataDir)
-	if err != nil {
-		return false, err
-	}
-	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, writer.ManifestiFilePath(""))
-	if err != nil {
-		return false, err
-	}
+func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
+	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, constants.OutputBaseFolder, constants.OutputManifestiFilename)
 	slog.Info("remote manifesti file", "url", remotePath)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	res, err := http.Get(remotePath)
 	if err != nil {
-		return false, err
+		return nil, nil, err
 	}
 	defer res.Body.Close()
-	remoteManBytes, err := io.ReadAll(res.Body)
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	out := writer.ManifestiJson{}
+	err = json.Unmarshal(bytes, &out.Data)
+	if err != nil {
+		return bytes, nil, err
+	}
+
+	return bytes, out.GetSlice(), err
+}
+
+func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {
+	localSlice, err := w.JsonRead(constants.OutputManifestiFilename)
 	if err != nil {
 		return false, err
 	}
-	return utils.TestJsonEquals(manBytes, remoteManBytes)
+
+	_, remoteSlice, err := GetRemoteManifesti()
+	if err != nil {
+		return false, err
+	}
+
+	slices.SortStableFunc(localSlice, func(a, b scraper.Manifesto) int {
+		name := strings.Compare(a.Name, b.Name)
+		if name != 0 {
+			return name
+		}
+
+		return strings.Compare(a.Location, b.Location)
+	})
+	slices.SortStableFunc(remoteSlice, func(a, b scraper.Manifesto) int {
+		name := strings.Compare(a.Name, b.Name)
+		if name != 0 {
+			return name
+		}
+
+		return strings.Compare(a.Location, b.Location)
+	})
+
+	return reflect.DeepEqual(localSlice, remoteSlice), nil
 }
