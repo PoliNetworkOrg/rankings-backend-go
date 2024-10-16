@@ -30,9 +30,10 @@ func isRankingsNews(str string) bool {
 }
 
 type Manifesto struct {
-	Name     string `json:"name"`
-	Url      string `json:"url"`
-	Location string `json:"location"`
+	Name       string `json:"name"`
+	Url        string `json:"url"`
+	Location   string `json:"location"`
+	DegreeType string `json:"type"`
 }
 
 func ScrapeManifesti() []Manifesto {
@@ -40,7 +41,7 @@ func ScrapeManifesti() []Manifesto {
 	// hrefs := []string{}
 	out := []Manifesto{}
 
-	wg := sync.WaitGroup {}
+	wg := sync.WaitGroup{}
 
 	for _, url := range urls {
 		wg.Add(1)
@@ -67,16 +68,16 @@ func ScrapeManifesti() []Manifesto {
 
 			finalUrl := res.Request.URL
 			doc.Find("#id_combocds > tbody > tr:nth-child(3) > td.ElementInfoCard2.left > select > optgroup").Each(func(i int, group *goquery.Selection) {
-				label, ok := group.Attr("label")
+				degreeType, ok := group.Attr("label")
 				if !ok {
 					return
 				}
 
-				label = strings.Split(label, " -")[0]
+				degreeType = strings.Split(degreeType, " -")[0]
 
 				group.Children().Each(func(i int, opt *goquery.Selection) {
-					text := opt.Text()
-					text = strings.Split(text, " (")[0]
+					courseName := opt.Text()
+					courseName = strings.Split(courseName, " (")[0]
 
 					value, err := strconv.ParseUint(opt.AttrOr("value", "0"), 10, 64)
 					if err != nil {
@@ -90,7 +91,7 @@ func ScrapeManifesti() []Manifesto {
 					q.Del("__pj0")
 					optUrl.RawQuery = q.Encode()
 
-					slog.Info("optgroup", "label", label, "opt", text, "value", value, "link", optUrl.String())
+					slog.Info("optgroup", "label", degreeType, "opt", courseName, "value", value, "link", optUrl.String())
 					mandoc, _, err := loadDoc(optUrl.String())
 					if err != nil {
 						log.Fatal(err)
@@ -100,9 +101,10 @@ func ScrapeManifesti() []Manifesto {
 						locations := strings.Split(loc.Text(), ",")
 						for _, location := range locations {
 							newMan := Manifesto{
-								Name:     strings.TrimSpace(text),
-								Url:      optUrl.String(),
-								Location: strings.TrimSpace(location),
+								Name:       strings.TrimSpace(courseName),
+								Url:        optUrl.String(),
+								Location:   strings.TrimSpace(location),
+								DegreeType: strings.TrimSpace(degreeType),
 							}
 							out = append(out, newMan)
 						}
