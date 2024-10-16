@@ -21,17 +21,17 @@ func NewWriter[T interface{}](dirPath string) (Writer[T], error) {
 	return Writer[T]{DirPath: dirPath}, nil
 }
 
-func (w *Writer[T]) getFilePath(filename string) string {
+func (w *Writer[T]) GetFilePath(filename string) string {
 	return path.Join(w.DirPath, filename)
 }
 
 func (w *Writer[T]) Write(data []byte, filename string) error {
-	p := w.getFilePath(filename)
+	p := w.GetFilePath(filename)
 	return os.WriteFile(p, data, 0664)
 }
 
 func (w *Writer[T]) Read(filename string) ([]byte, error) {
-	p := w.getFilePath(filename)
+	p := w.GetFilePath(filename)
 	return os.ReadFile(p)
 }
 

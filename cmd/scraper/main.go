@@ -42,7 +42,7 @@ func main() {
 	if scraped {
 		slog.Info("scraped manifesti", "found", len(mans))
 
-		err = mansWriter.JsonWrite(mans, constants.OutputManifestiFilename, false)
+		err = mansWriter.JsonWrite(mans, constants.OutputManifestiListFilename, false)
 		if err != nil {
 			panic(err)
 		}
@@ -59,18 +59,22 @@ func main() {
 }
 
 func ParseLocalOrScrapeManifesti(w *writer.Writer[[]scraper.Manifesto], force bool) ([]scraper.Manifesto, bool) {
+	fn := constants.OutputManifestiListFilename
+	fp := w.GetFilePath(fn)
+	slog := slog.With("filepath", fp)
+
 	if force {
 		slog.Info("Scraping manifesti because of -f flag")
 		return scraper.ScrapeManifesti(), true
 	}
 
-	local, err := w.JsonRead(constants.OutputManifestiFilename)
+	local, err := w.JsonRead(fn)
 	if err != nil {
 		slog.Error("Failed to read from manifesti json file", "error", err)
 		return scraper.ScrapeManifesti(), true
 	}
 	if len(local) == 0 {
-		slog.Info("Scraping manifesti, since saved file data is empty")
+		slog.Info(fmt.Sprintf("%s file is empty, running scraper...", fn))
 		return scraper.ScrapeManifesti(), true
 	}
 
@@ -78,7 +82,7 @@ func ParseLocalOrScrapeManifesti(w *writer.Writer[[]scraper.Manifesto], force bo
 }
 
 func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
-	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, constants.OutputBaseFolder, constants.OutputManifestiFilename)
+	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, constants.OutputBaseFolder, constants.OutputManifestiListFilename)
 	slog.Info("remote manifesti file", "url", remotePath)
 	if err != nil {
 		return nil, nil, err
@@ -104,7 +108,7 @@ func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
 }
 
 func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {
-	localSlice, err := w.JsonRead(constants.OutputManifestiFilename)
+	localSlice, err := w.JsonRead(constants.OutputManifestiListFilename)
 	if err != nil {
 		return false, err
 	}
