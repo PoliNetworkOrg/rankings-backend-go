@@ -3,18 +3,29 @@ package writer
 import (
 	"encoding/json"
 	"os"
+	"path"
 
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
-	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 )
 
-type degreeMap = map[string][]scraper.Manifesto
-type locationMap = map[string]string
-type courseMap = map[string]locationMap
+type (
+	degreeMap   = map[string][]scraper.Manifesto
+	locationMap = map[string]string
+	courseMap   = map[string]locationMap
+)
+
+type ManifestiJson struct {
+	Data map[string]courseMap // json output structure
+}
+
+func ManifestiFilePath(dataDir string) string {
+	return path.Join(dataDir, constants.OutputBaseFolder, constants.OutputManifestiFilename)
+}
 
 func groupByDegreeType(mans []scraper.Manifesto) degreeMap {
 	out := make(degreeMap, len(mans))
-	
+
 	for _, m := range mans {
 		if out[m.DegreeType] == nil {
 			out[m.DegreeType] = make([]scraper.Manifesto, 0)
@@ -27,7 +38,7 @@ func groupByDegreeType(mans []scraper.Manifesto) degreeMap {
 
 func groupByCourse(mans []scraper.Manifesto) courseMap {
 	out := make(courseMap, len(mans))
-	
+
 	for _, m := range mans {
 		if out[m.Name] == nil {
 			out[m.Name] = make(locationMap)
@@ -38,30 +49,56 @@ func groupByCourse(mans []scraper.Manifesto) courseMap {
 	return out
 }
 
-func WriteManifesti(mans []scraper.Manifesto) error {
+func ReadManifestiJsonFile(dataDir string) ([]byte, error) {
+	return os.ReadFile(ManifestiFilePath(dataDir))
+}
+
+func ParseManifestiJson(data []byte) (ManifestiJson, error) {
+	var out ManifestiJson
+
+	err := json.Unmarshal(data, &out)
+	if err != nil {
+		return NewManifestiJson([]scraper.Manifesto{}), err
+	}
+
+	return out, nil
+}
+
+func NewManifestiJson(mans []scraper.Manifesto) ManifestiJson {
 	byDegType := groupByDegreeType(mans)
-	out := make(map[string]courseMap, len(byDegType))
-	for k,v := range byDegType {
+	data := make(map[string]courseMap, len(byDegType))
+	for k, v := range byDegType {
 		mapped := groupByCourse(v)
-		out[k] = mapped
+		data[k] = mapped
 	}
 
-	tmpExists, err := utils.DoFolderExists("tmp")
-	if !tmpExists || err != nil {
-		os.Mkdir("tmp", os.ModePerm)
-	}
+	return ManifestiJson{Data: data}
+}
 
-	jsonSlc, err := json.MarshalIndent(mans, "", "	")
+func (m *ManifestiJson) Write(dataDir string) error {
+	j, err := json.MarshalIndent(m.Data, "", "	")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	jsonMap, err := json.MarshalIndent(out, "", "	")
-	if err != nil {
-		panic(err)
+	err = os.WriteFile(ManifestiFilePath(dataDir), j, 0644)
+	return err
+}
+
+func (m *ManifestiJson) GetSlice() []scraper.Manifesto {
+	out := make([]scraper.Manifesto, 0)
+	for dtk, m1 := range m.Data {
+		for ck, m2 := range m1 {
+			for lk, url := range m2 {
+				out = append(out, scraper.Manifesto {
+					Name: ck,
+					Location: lk,
+					DegreeType: dtk,
+					Url: url,
+				})
+			}
+		}
 	}
 
-	os.WriteFile("tmp/test.json", jsonSlc, 0644)
-	os.WriteFile("tmp/test_map.json", jsonMap, 0644)
-	return nil
+	return out
 }

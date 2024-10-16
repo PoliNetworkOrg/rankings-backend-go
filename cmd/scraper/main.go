@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/json"
+	"io"
 	"log/slog"
-	"os"
+	"net/http"
+	"net/url"
 
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
@@ -30,25 +32,55 @@ func main() {
 		slog.Info("argv validation", "data_dir", opts.dataDir)
 	}
 
-
-	mansB, err := os.ReadFile("tmp/test.json")
-	var mans []scraper.Manifesto
-
-	// the following is crazy, but atm it's for testing 
-	if err != nil || len(mansB) == 0 {
-		mans = scraper.ScrapeManifesti()
-	} else {
-		err = json.Unmarshal(mansB, &mans)
-		if err != nil {
-			mans = scraper.ScrapeManifesti()
-		}
-	}
-
-	writer.WriteManifesti(mans)
-
-	equals, err := utils.TestJsonEquals("tmp/test_map.json", opts.dataDir + "/output/manifesti.json")
+	mans := ParseLocalOrScrapeManifesti(opts.dataDir)
+	manJson := writer.NewManifestiJson(mans)
+	err = manJson.Write(opts.dataDir)
 	if err != nil {
 		panic(err)
 	}
-	slog.Info("scrape manifesti, equals to stable version??", "equals", equals)
+
+	manEquals, err := DoLocalEqualsRemoteManifesti(opts.dataDir)
+	slog.Info("scrape manifesti, equals to remote version??", "equals", manEquals)
+}
+
+func ParseLocalOrScrapeManifesti(dataDir string) []scraper.Manifesto {
+	var mans []scraper.Manifesto
+	mansB, err := writer.ReadManifestiJsonFile(dataDir)
+
+	// bro this is nested
+	if mansB == nil || err != nil {
+		mans = scraper.ScrapeManifesti()
+	} else {
+		json, err := writer.ParseManifestiJson(mansB)
+		if err != nil {
+			mans = scraper.ScrapeManifesti()
+		} else {
+			mans = json.GetSlice()
+		}
+	}
+
+	return mans
+}
+
+func DoLocalEqualsRemoteManifesti(dataDir string) (bool, error) {
+	manBytes, err := writer.ReadManifestiJsonFile(dataDir)
+	if err != nil {
+		return false, err
+	}
+	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, writer.ManifestiFilePath(""))
+	if err != nil {
+		return false, err
+	}
+	slog.Info("remote manifesti file", "url", remotePath)
+
+	res, err := http.Get(remotePath)
+	if err != nil {
+		return false, err
+	}
+	defer res.Body.Close()
+	remoteManBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return false, err
+	}
+	return utils.TestJsonEquals(manBytes, remoteManBytes)
 }
