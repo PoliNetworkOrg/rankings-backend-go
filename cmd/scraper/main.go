@@ -27,7 +27,7 @@ func main() {
 		slog.Info("argv validation", "data_dir", opts.dataDir)
 	}
 
-	mans := ParseLocalOrScrapeManifesti(opts.dataDir)
+	mans := ParseLocalOrScrapeManifesti(opts.dataDir, opts.force)
 	manJson := writer.NewManifestiJson(mans)
 	err = manJson.Write(opts.dataDir)
 	if err != nil {
@@ -38,7 +38,11 @@ func main() {
 	slog.Info("scrape manifesti, equals to remote version??", "equals", manEquals)
 }
 
-func ParseLocalOrScrapeManifesti(dataDir string) []scraper.Manifesto {
+func ParseLocalOrScrapeManifesti(dataDir string, force bool) []scraper.Manifesto {
+	if force {
+		return scraper.ScrapeManifesti()
+	}
+
 	var mans []scraper.Manifesto
 	mansB, err := writer.ReadManifestiJsonFile(dataDir)
 
