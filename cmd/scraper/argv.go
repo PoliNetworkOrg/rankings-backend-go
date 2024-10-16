@@ -21,7 +21,7 @@ func ParseOpts() Opts {
 
 	// definition
 	help := getopt.BoolLong("help", 'h', "Shows the help menu")
-	dataDir := getopt.StringLong("data-dir", 'd', tmpDir, "Path of the data folder (containing html, json, ...)")
+	dataDir := getopt.StringLong("data-dir", 'd', tmpDir, "Path of the data folder (containing html, json, ...). Defaults to tmp directory")
 	force := getopt.BoolLong("force", 'f', "Force the scraper to run and overwrite files")
 
 	// parsing
