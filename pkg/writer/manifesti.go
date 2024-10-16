@@ -3,8 +3,6 @@ package writer
 import (
 	"encoding/json"
 	"os"
-	"path"
-	"reflect"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
@@ -66,28 +64,4 @@ func WriteManifesti(mans []scraper.Manifesto) error {
 	os.WriteFile("tmp/test.json", jsonSlc, 0644)
 	os.WriteFile("tmp/test_map.json", jsonMap, 0644)
 	return nil
-}
-
-func TestEquals(dataDir string) bool {
-	ours, err := os.ReadFile("tmp/test_map.json")
-	if err != nil  {
-		panic(err)
-	}
-	theirs, err := os.ReadFile(path.Join(dataDir, "output/manifesti.json"))
-	if err != nil  {
-		panic(err)
-	}
-
-	var oursDec, theirsDec map[string]courseMap
-	err = json.Unmarshal(ours, &oursDec)
-	if err != nil  {
-		panic(err)
-	}
-
-	err = json.Unmarshal(theirs, &theirsDec)
-	if err != nil  {
-		panic(err)
-	}
-
-	return reflect.DeepEqual(oursDec, theirsDec)
 }

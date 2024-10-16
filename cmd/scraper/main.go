@@ -7,6 +7,7 @@ import (
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
@@ -30,4 +31,10 @@ func main() {
 	}
 
 	writer.WriteManifesti(mans)
+
+	equals, err := utils.TestJsonEquals("tmp/test_map.json", opts.dataDir + "/output/manifesti.json")
+	if err != nil {
+		panic(err)
+	}
+	slog.Info("scrape manifesti, equals to stable version??", "equals", equals)
 }
