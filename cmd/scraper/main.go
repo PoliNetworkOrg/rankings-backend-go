@@ -109,13 +109,13 @@ func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
 		return nil, nil, err
 	}
 
-	out := parser.ManifestiJson{}
+	out := parser.ManifestiByDegreeType{}
 	err = json.Unmarshal(bytes, &out.Data)
 	if err != nil {
 		return bytes, nil, err
 	}
 
-	return bytes, out.GetSlice(), err
+	return bytes, out.GetAll(), err
 }
 
 func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {

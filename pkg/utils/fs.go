@@ -5,8 +5,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 )
@@ -62,4 +62,11 @@ func TmpDirectory() (string, error) {
 	}
 
 	return tmpPath, nil
+}
+
+func MakeFilename(str string, ext string) string {
+	str = strings.TrimSpace(str)
+	str = strings.ToLower(str)
+	str = strings.ReplaceAll(str, " ", "_")
+	return str + ext
 }

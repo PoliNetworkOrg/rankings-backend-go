@@ -10,8 +10,32 @@ type (
 	courseMap   = map[string]locationMap
 )
 
-type ManifestiJson struct {
-	Data map[string]courseMap // json output structure
+type ManifestiByDegreeType struct {
+	DegreeType string    `json:"degreeType"`
+	Data       courseMap `json:"data"`
+}
+
+type ManifestiByCourse struct {
+	Data       courseMap `json:"data"`
+}
+
+func ParseManifestiByDegreeType(mans []scraper.Manifesto) []ManifestiByDegreeType {
+	byDegType := groupByDegreeType(mans)
+	out := make([]ManifestiByDegreeType, 0, len(byDegType))
+	for dt, all := range groupByDegreeType(mans) {
+		data := groupByCourse(all)
+		m := ManifestiByDegreeType { DegreeType: dt, Data: data }
+		out = append(out, m)
+	}
+
+	return out
+}
+
+func ParseManifestiByCourse(mans []scraper.Manifesto) ManifestiByCourse {
+	byDegType := groupByCourse(mans)
+	return ManifestiByCourse {
+		Data: byDegType,
+	}
 }
 
 func groupByDegreeType(mans []scraper.Manifesto) degreeMap {
@@ -40,18 +64,16 @@ func groupByCourse(mans []scraper.Manifesto) courseMap {
 	return out
 }
 
-func (m *ManifestiJson) GetSlice() []scraper.Manifesto {
+func (m *ManifestiByDegreeType) GetAll() []scraper.Manifesto {
 	out := make([]scraper.Manifesto, 0)
-	for dtk, m1 := range m.Data {
-		for ck, m2 := range m1 {
-			for lk, url := range m2 {
-				out = append(out, scraper.Manifesto {
-					Name: ck,
-					Location: lk,
-					DegreeType: dtk,
-					Url: url,
-				})
-			}
+	for ck, m2 := range m.Data {
+		for lk, url := range m2 {
+			out = append(out, scraper.Manifesto{
+				Name:       ck,
+				Location:   lk,
+				DegreeType: m.DegreeType,
+				Url:        url,
+			})
 		}
 	}
 
