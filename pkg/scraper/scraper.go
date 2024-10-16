@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -97,7 +98,7 @@ func ScrapeManifesti() []Manifesto {
 						log.Fatal(err)
 					}
 
-					mandoc.Find("td.CenterBar table.BoxInfoCard tr:nth-child(4) td:nth-child(4)").Each(func(i int, loc *goquery.Selection) {
+					mandoc.Find("td.CenterBar table.BoxInfoCard tr:nth-child(4) td:nth-child(4)").First().Each(func(i int, loc *goquery.Selection) {
 						locations := strings.Split(loc.Text(), ",")
 						for _, location := range locations {
 							newMan := Manifesto{
@@ -116,7 +117,29 @@ func ScrapeManifesti() []Manifesto {
 
 	wg.Wait()
 
-	return out
+	// because of there are some courses shared between schools, they appears twice
+	// in the list, while we want them only once.
+	// In the future we could also track the School, so it would not cause the issue.
+	// e.g. Design & Engineering (Des, 3I), Geoinformatics Engineering (3I, IngCiv)
+	cleanOut := make([]Manifesto, 0, len(out))
+	for i, m1 := range out[:len(out)] {
+		count := 0
+		for _, m2 := range out[i+1:] {
+			if reflect.DeepEqual(m1, m2) {
+				count++
+			}
+		}
+
+		if count == 0 {
+			cleanOut = append(cleanOut, m1)
+		} else {
+			// found a duplicate, not adding. 
+			// it will be added when m1 -> m2 -> ... -> mn, with mn last duplicate
+			slog.Debug("scraper manifesti: found duplicate", "manifesto", m1)
+		}
+	}
+
+	return cleanOut
 }
 
 func loadDoc(url string) (*goquery.Document, *http.Response, error) {
