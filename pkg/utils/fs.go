@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -13,16 +14,16 @@ import (
 func DoFolderExists(absPath string) (bool, error) {
 	stat, err := os.Stat(absPath)
 
-  switch err {
-  case nil:
-    return stat.IsDir(), nil
+	if err != nil {
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			return false, nil
+		default:
+			return false, err
+		}
+	}
 
-  case fs.ErrNotExist:
-  return false, nil
-
-  default: // other errors
-  return false, err
-  }
+	return stat.IsDir(), nil
 }
 
 func CreateFolderIfNotExists(absPath string) error {
@@ -42,7 +43,7 @@ func CreateFolderIfNotExists(absPath string) error {
 	}
 
 	if exists {
-		return err
+		return nil
 	}
 
 	err = os.MkdirAll(path, os.ModePerm)
