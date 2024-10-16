@@ -21,12 +21,7 @@ func main() {
 		slog.Error("Cannot create output folder(s)", "error", err)
 	}
 
-	tmpDir, err := utils.TmpDirectory()
-	if err != nil {
-		panic(err)
-	}
-
-	if opts.dataDir == tmpDir {
+	if opts.isTmpDir {
 		slog.Warn("ATTENION! using tmp directory instead of data directory. Check --help for more information on data dir.", "dataDir", opts.dataDir)
 	} else {
 		slog.Info("argv validation", "data_dir", opts.dataDir)

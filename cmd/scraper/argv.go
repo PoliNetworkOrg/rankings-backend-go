@@ -12,12 +12,11 @@ import (
 
 type Opts struct {
 	dataDir string
+	isTmpDir bool
 }
 
 func ParseOpts() Opts {
 	tmpDir, _ := utils.TmpDirectory() // we don't care if err
-
-	opts := Opts{}
 
 	// definition
 	help := getopt.BoolLong("help", 'h', "Shows the help menu")
@@ -36,10 +35,8 @@ func ParseOpts() Opts {
 		tint.Err(err)
 		os.Exit(1)
 	}
-	opts.dataDir = absDataDir
 
-	dataDirExists, err := utils.DoFolderExists(opts.dataDir)
-
+	dataDirExists, err := utils.DoFolderExists(absDataDir)
 	if !dataDirExists {
 		slog.Error("You must set the --data-dir flag to an existing directory.")
 		os.Exit(2)
@@ -49,5 +46,8 @@ func ParseOpts() Opts {
 		os.Exit(1)
 	}
 
-	return opts
+	return Opts {
+		dataDir: absDataDir,
+		isTmpDir: absDataDir == tmpDir,
+	}
 }
