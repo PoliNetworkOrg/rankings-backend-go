@@ -6,4 +6,6 @@ const (
 	OutputLinksFilename     = "links.txt"
 	OutputStatsFilname      = "stats.json"
 	OutputManifestiFilename = "manifesti.json"
+
+	TmpDirectoryName				= "tmp"
 )

@@ -14,8 +14,22 @@ import (
 func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
 	opts := ParseOpts()
+	err := utils.CreateAllOutFolders(opts.dataDir)
+	if err != nil {
+		slog.Error("Cannot create output folder(s)", "error", err)
+	}
 
-	slog.Info("argv validation", "data_dir", opts.dataDir)
+	tmpDir, err := utils.TmpDirectory()
+	if err != nil {
+		panic(err)
+	}
+
+	if opts.dataDir == tmpDir {
+		slog.Warn("ATTENION! using tmp directory instead of data directory. Check --help for more information on data dir.", "dataDir", opts.dataDir)
+	} else {
+		slog.Info("argv validation", "data_dir", opts.dataDir)
+	}
+
 
 	mansB, err := os.ReadFile("tmp/test.json")
 	var mans []scraper.Manifesto
