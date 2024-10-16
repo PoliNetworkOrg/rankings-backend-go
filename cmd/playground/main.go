@@ -20,4 +20,5 @@ func main() {
 	// }
 
 	JsonEncodeDecodeStruct()
+	WriteReadParseCar()
 }

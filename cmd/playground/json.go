@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
 type Brand int
@@ -41,27 +44,52 @@ func carEquals(a Car, b Car) bool {
 	return reflect.DeepEqual(a, b)
 }
 
+var car1 = Car{
+	Brand:       Audi,
+	Model:       "A1",
+	Optionals:   []string{"a/c", "rear-camera", "ads", "touchscreen"},
+	Cost:        18_000,
+	Color:       "red",
+	IsAvailable: true,
+	ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
+}
+
+var car2 = Car{
+	Color:       "red",
+	Model:       "A1",
+	Cost:        18_000,
+	IsAvailable: true,
+	Brand:       Audi,
+	ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
+	Optionals:   []string{"rear-camera", "a/c", "ads", "touchscreen"},
+}
+
+func WriteReadParseCar() {
+	tmpFolder, err := utils.TmpDirectory()
+	if err != nil {
+		panic(err)
+	}
+
+	w, err := writer.NewWriter[Car](tmpFolder)
+	err = w.JsonWrite(car1, "car1.json", false)
+	if err != nil {
+		panic(err)
+	}
+
+	err = w.JsonWrite(car1, "car1_indent.json", false)
+	if err != nil {
+		panic(err)
+	}
+
+	carParsed, err := w.JsonRead("car1.json")
+	if err != nil {
+		panic(err)
+	}
+
+	slog.Info("write, read and parse worked??", "equals", carEquals(carParsed, car1))
+}
+
 func JsonEncodeDecodeStruct() {
-	car1 := Car{
-		Brand:       Audi,
-		Model:       "A1",
-		Optionals:   []string{"a/c", "rear-camera", "ads", "touchscreen"},
-		Cost:        18_000,
-		Color:       "red",
-		IsAvailable: true,
-		ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
-	}
-
-	car2 := Car{
-		Color:       "red",
-		Model:       "A1",
-		Cost:        18_000,
-		IsAvailable: true,
-		Brand:       Audi,
-		ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
-		Optionals:   []string{"rear-camera", "a/c", "ads", "touchscreen"},
-	}
-
 	carB1, err := json.Marshal(car1)
 	if err != nil {
 		panic(err)
