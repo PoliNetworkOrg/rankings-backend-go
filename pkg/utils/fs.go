@@ -50,23 +50,6 @@ func CreateFolderIfNotExists(absPath string) error {
 	return err
 }
 
-func CreateAllOutFolders(dataDir string) error {
-	path1 := path.Join(dataDir, constants.OutputBaseFolder)
-	path2 := path.Join(dataDir, constants.OutputHtmlFolder)
-
-	err := CreateFolderIfNotExists(path1)
-	if err != nil {
-		return err
-	}
-
-	err = CreateFolderIfNotExists(path2)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func TmpDirectory() (string, error) {
 	tmpPath, err := filepath.Abs(constants.TmpDirectoryName)
 	if err != nil {

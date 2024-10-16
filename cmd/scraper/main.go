@@ -17,7 +17,6 @@ import (
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/parser"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
-	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
@@ -25,10 +24,6 @@ func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
 
 	opts := ParseOpts()
-	err := utils.CreateAllOutFolders(opts.dataDir)
-	if err != nil {
-		slog.Error("Cannot create output folder(s)", "error", err)
-	}
 
 	if opts.isTmpDir {
 		slog.Warn("ATTENION! using tmp directory instead of data directory. Check --help for more information on data dir.", "dataDir", opts.dataDir)
