@@ -12,6 +12,7 @@ import (
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/parser"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
@@ -93,7 +94,7 @@ func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
 		return nil, nil, err
 	}
 
-	out := writer.ManifestiJson{}
+	out := parser.ManifestiJson{}
 	err = json.Unmarshal(bytes, &out.Data)
 	if err != nil {
 		return bytes, nil, err
