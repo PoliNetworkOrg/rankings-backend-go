@@ -2,6 +2,7 @@ package utils
 
 import (
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -24,16 +25,40 @@ func DoFolderExists(absPath string) (bool, error) {
   }
 }
 
-func CreateAllOutFolders(dataDir string) error {
-	path1 := path.Join(dataDir, constants.OutputBaseFolder)
-	path2 := path.Join(dataDir, constants.OutputHtmlFolder)
+func CreateFolderIfNotExists(absPath string) error {
+	path := absPath
+	if !filepath.IsAbs(path) {
+		slog.Warn("asking for absPath, provided a relative path", "provided", absPath)
+		var err error
+		path, err = filepath.Abs(absPath)
+		if err != nil {
+			return err 
+		}
+	}
 
-	err := os.MkdirAll(path1, os.ModePerm)
+	exists, err := DoFolderExists(path)
 	if err != nil {
 		return err
 	}
 
-	err = os.MkdirAll(path2, os.ModePerm)
+	if exists {
+		return err
+	}
+
+	err = os.MkdirAll(path, os.ModePerm)
+	return err
+}
+
+func CreateAllOutFolders(dataDir string) error {
+	path1 := path.Join(dataDir, constants.OutputBaseFolder)
+	path2 := path.Join(dataDir, constants.OutputHtmlFolder)
+
+	err := CreateFolderIfNotExists(path1)
+	if err != nil {
+		return err
+	}
+
+	err = CreateFolderIfNotExists(path2)
 	if err != nil {
 		return err
 	}
@@ -42,19 +67,15 @@ func CreateAllOutFolders(dataDir string) error {
 }
 
 func TmpDirectory() (string, error) {
-	fullPath, err := filepath.Abs(constants.TmpDirectoryName)
+	tmpPath, err := filepath.Abs(constants.TmpDirectoryName)
 	if err != nil {
 		return "", err
 	}
 
-	exists, err := DoFolderExists(constants.TmpDirectoryName)
+	err = CreateFolderIfNotExists(tmpPath)
 	if err != nil {
 		return "", err
 	}
 
-	if !exists {
-		os.Mkdir(fullPath, os.ModePerm)
-	}
-
-	return fullPath, nil
+	return tmpPath, nil
 }
