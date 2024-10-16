@@ -43,22 +43,22 @@ func ParseLocalOrScrapeManifesti(dataDir string, force bool) []scraper.Manifesto
 		return scraper.ScrapeManifesti()
 	}
 
-	var mans []scraper.Manifesto
 	mansB, err := writer.ReadManifestiJsonFile(dataDir)
-
-	// bro this is nested
-	if mansB == nil || err != nil {
-		mans = scraper.ScrapeManifesti()
-	} else {
-		json, err := writer.ParseManifestiJson(mansB)
-		if err != nil {
-			mans = scraper.ScrapeManifesti()
-		} else {
-			mans = json.GetSlice()
-		}
+	if err != nil {
+		return scraper.ScrapeManifesti()
 	}
 
-	return mans
+	j, err := writer.ParseManifestiJson(mansB)
+	if err != nil {
+		return scraper.ScrapeManifesti()
+	}
+
+	parsed := j.GetSlice()
+	if len(parsed) == 0 {
+		return scraper.ScrapeManifesti()
+	}
+
+	return parsed
 }
 
 func DoLocalEqualsRemoteManifesti(dataDir string) (bool, error) {
