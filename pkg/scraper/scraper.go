@@ -91,7 +91,7 @@ func ScrapeManifesti() []Manifesto {
 					q.Del("__pj0")
 					optUrl.RawQuery = q.Encode()
 
-					slog.Info("optgroup", "label", degreeType, "opt", courseName, "value", value, "link", optUrl.String())
+					slog.Debug("optgroup", "label", degreeType, "opt", courseName, "value", value, "link", optUrl.String())
 					mandoc, _, err := loadDoc(optUrl.String())
 					if err != nil {
 						log.Fatal(err)

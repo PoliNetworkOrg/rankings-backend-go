@@ -15,6 +15,7 @@ import (
 
 func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
+
 	opts := ParseOpts()
 	err := utils.CreateAllOutFolders(opts.dataDir)
 	if err != nil {
@@ -24,7 +25,7 @@ func main() {
 	if opts.isTmpDir {
 		slog.Warn("ATTENION! using tmp directory instead of data directory. Check --help for more information on data dir.", "dataDir", opts.dataDir)
 	} else {
-		slog.Info("argv validation", "data_dir", opts.dataDir)
+		slog.Info("Argv validation", "data_dir", opts.dataDir)
 	}
 
 	mans := ParseLocalOrScrapeManifesti(opts.dataDir, opts.force)
@@ -35,26 +36,34 @@ func main() {
 	}
 
 	manEquals, err := DoLocalEqualsRemoteManifesti(opts.dataDir)
-	slog.Info("scrape manifesti, equals to remote version??", "equals", manEquals)
+	slog.Info("Scrape manifesti, equals to remote version??", "equals", manEquals)
 }
 
 func ParseLocalOrScrapeManifesti(dataDir string, force bool) []scraper.Manifesto {
 	if force {
+		slog.Info("Scraping manifesti because of -f flag")
 		return scraper.ScrapeManifesti()
 	}
 
 	mansB, err := writer.ReadManifestiJsonFile(dataDir)
 	if err != nil {
+		slog.Error("Failed to read bytes from manifesti json file", "error", err)
+		return scraper.ScrapeManifesti()
+	}
+	if len(mansB) == 0 {
+		slog.Info("Scraping manifesti, since saved file bytes slice is empty", "bytes", mansB)
 		return scraper.ScrapeManifesti()
 	}
 
 	j, err := writer.ParseManifestiJson(mansB)
 	if err != nil {
+		slog.Error("Failed to parse manifesti json file", "error", err)
 		return scraper.ScrapeManifesti()
 	}
 
 	parsed := j.GetSlice()
-	if len(parsed) == 0 {
+	if len(j.Data) == 0 || len(parsed) == 0 {
+		slog.Info("Scraping manifesti, since parsed data from saved file is empty", "data", j.Data, "parsed", parsed)
 		return scraper.ScrapeManifesti()
 	}
 
