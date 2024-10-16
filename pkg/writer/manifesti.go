@@ -56,7 +56,7 @@ func ReadManifestiJsonFile(dataDir string) ([]byte, error) {
 func ParseManifestiJson(data []byte) (ManifestiJson, error) {
 	var out ManifestiJson
 
-	err := json.Unmarshal(data, &out)
+	err := json.Unmarshal(data, &out.Data)
 	if err != nil {
 		return NewManifestiJson([]scraper.Manifesto{}), err
 	}
