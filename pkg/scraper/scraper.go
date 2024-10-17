@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,12 +38,17 @@ type Manifesto struct {
 	DegreeType string `json:"type"`
 }
 
-func ScrapeManifesti() []Manifesto {
+func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 	urls := []string{constants.WebPolimiDesignUrl, constants.WebPolimiArchUrbUrl, constants.WebPolimiIngCivUrl, constants.WebPolimiIngInfIndUrl}
 	// hrefs := []string{}
-	out := []Manifesto{}
+	out := alreadyScraped
 
 	wg := sync.WaitGroup{}
+
+	alreadyScrapedUrl := make([]string, len(alreadyScraped))
+	for i, as := range alreadyScraped {
+		alreadyScrapedUrl[i] = as.Url
+	}
 
 	for _, url := range urls {
 		wg.Add(1)
@@ -92,7 +98,12 @@ func ScrapeManifesti() []Manifesto {
 					q.Del("__pj0")
 					optUrl.RawQuery = q.Encode()
 
-					slog.Debug("optgroup", "label", degreeType, "opt", courseName, "value", value, "link", optUrl.String())
+					if slices.Contains(alreadyScrapedUrl, optUrl.String()) {
+						slog.Debug("url already scraped, skipping...", "url", optUrl.String())
+						return
+					}
+
+					slog.Debug("found new manifesti url, scraping...", "url", optUrl.String())
 					mandoc, _, err := loadDoc(optUrl.String())
 					if err != nil {
 						log.Fatal(err)

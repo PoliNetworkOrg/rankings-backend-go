@@ -32,64 +32,61 @@ func main() {
 	}
 
 	mansWriter, err := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
-	mans, scraped := ParseLocalOrScrapeManifesti(&mansWriter, opts.force)
+	mans := ScrapeManifestiWithLocal(&mansWriter, opts.force)
 	if err != nil {
 		panic(err)
 	}
 
-	if scraped {
-		slog.Info("scraped manifesti", "found", len(mans))
+	slog.Info("finished scraping manifesti, writing to file...", "found", len(mans))
 
-		err = mansWriter.JsonWrite(constants.OutputManifestiListFilename, mans, false)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		slog.Info("parsed manifesti", "found", len(mans))
+	err = mansWriter.JsonWrite(constants.OutputManifestiListFilename, mans, false)
+	if err != nil {
+		panic(err)
 	}
+
+	slog.Info("successfully written manifesti to file!")
 
 	manEquals, err := DoLocalEqualsRemoteManifesti(&mansWriter)
 	if err != nil {
-		panic(err)
+		slog.Error("cannot perform comparison between local and remote versions", "err", err)
+		return
 	}
 
-	slog.Info("Scrape manifesti, equals to remote version??", "equals", manEquals)
+	slog.Info("Scrape manifesti, equals to remote version?? SUS", "equals", manEquals)
 }
 
-func ParseLocalOrScrapeManifesti(w *writer.Writer[[]scraper.Manifesto], force bool) ([]scraper.Manifesto, bool) {
+func ScrapeManifestiWithLocal(w *writer.Writer[[]scraper.Manifesto], force bool) []scraper.Manifesto {
 	fn := constants.OutputManifestiListFilename
 	fp := w.GetFilePath(fn)
 	slog := slog.With("filepath", fp)
 
 	if force {
 		slog.Info("Scraping manifesti because of -f flag")
-		return scraper.ScrapeManifesti(), true
+		return scraper.ScrapeManifesti(nil)
 	}
 
 	local, err := w.JsonRead(fn)
 	if err != nil {
 		switch {
 		case errors.Is(err, os.ErrNotExist):
-				slog.Info(fmt.Sprintf("%s file not found, running scraper...", fn))
-			return scraper.ScrapeManifesti(), true
+			slog.Info(fmt.Sprintf("%s file not found, running scraper...", fn))
 		case errors.As(err, new(*json.SyntaxError)):
 			slog.Error(fmt.Sprintf("%s contains malformed JSON, running scraper...", fn))
-			return scraper.ScrapeManifesti(), true
 		case errors.As(err, new(*json.UnmarshalTypeError)):
 			slog.Error(fmt.Sprintf("%s contains JSON not compatible with the Manifesto struct, running scraper...", fn))
-			return scraper.ScrapeManifesti(), true
 		default:
 			slog.Error("Failed to read from manifesti json file, running scraper...", "error", err)
-			return scraper.ScrapeManifesti(), true
 		}
+		return scraper.ScrapeManifesti(nil)
 	}
 
 	if len(local) == 0 {
 		slog.Info(fmt.Sprintf("%s file is empty, running scraper...", fn))
-		return scraper.ScrapeManifesti(), true
+		return scraper.ScrapeManifesti(nil)
 	}
 
-	return local, false
+	slog.Info(fmt.Sprintf("loaded %d manifesti from %s json file, running scraper to check if there are new ones. If you would like to regenerate the whole thing, use the -f flag.", len(local), fn))
+	return scraper.ScrapeManifesti(local)
 }
 
 func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
