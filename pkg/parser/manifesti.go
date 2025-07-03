@@ -16,7 +16,11 @@ type ManifestiByDegreeType struct {
 }
 
 type ManifestiByCourse struct {
-	Data       courseMap `json:"data"`
+	Data courseMap `json:"data"`
+}
+
+type RemoteManifesti struct {
+	Data map[string](map[string](map[string]string)) // degree -> course name -> location -> url
 }
 
 func ParseManifestiByDegreeType(mans []scraper.Manifesto) []ManifestiByDegreeType {
@@ -24,7 +28,7 @@ func ParseManifestiByDegreeType(mans []scraper.Manifesto) []ManifestiByDegreeTyp
 	out := make([]ManifestiByDegreeType, 0, len(byDegType))
 	for dt, all := range groupByDegreeType(mans) {
 		data := groupByCourse(all)
-		m := ManifestiByDegreeType { DegreeType: dt, Data: data }
+		m := ManifestiByDegreeType{DegreeType: dt, Data: data}
 		out = append(out, m)
 	}
 
@@ -33,7 +37,7 @@ func ParseManifestiByDegreeType(mans []scraper.Manifesto) []ManifestiByDegreeTyp
 
 func ParseManifestiByCourse(mans []scraper.Manifesto) ManifestiByCourse {
 	byDegType := groupByCourse(mans)
-	return ManifestiByCourse {
+	return ManifestiByCourse{
 		Data: byDegType,
 	}
 }
@@ -74,6 +78,24 @@ func (m *ManifestiByDegreeType) GetAll() []scraper.Manifesto {
 				DegreeType: m.DegreeType,
 				Url:        url,
 			})
+		}
+	}
+
+	return out
+}
+
+func (m *RemoteManifesti) ToList() []scraper.Manifesto {
+	out := make([]scraper.Manifesto, 0)
+	for degree, course_list := range m.Data {
+		for course, location_list := range course_list {
+			for location, url := range location_list {
+				out = append(out, scraper.Manifesto{
+					Name:       course,
+					Location:   location,
+					DegreeType: degree,
+					Url:        url,
+				})
+			}
 		}
 	}
 

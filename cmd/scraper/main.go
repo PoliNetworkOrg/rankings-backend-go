@@ -90,7 +90,7 @@ func ScrapeManifestiWithLocal(w *writer.Writer[[]scraper.Manifesto], force bool)
 }
 
 func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
-	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, constants.OutputBaseFolder, constants.OutputManifestiListFilename)
+	remotePath, err := url.JoinPath(constants.WebGithubMainRawDataUrl, constants.OutputBaseFolder, "manifesti.json") // this is still the old filename
 	slog.Info("remote manifesti file", "url", remotePath)
 	if err != nil {
 		return nil, nil, err
@@ -106,13 +106,13 @@ func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
 		return nil, nil, err
 	}
 
-	out := parser.ManifestiByDegreeType{}
+	out := parser.RemoteManifesti{}
 	err = json.Unmarshal(bytes, &out.Data)
 	if err != nil {
 		return bytes, nil, err
 	}
 
-	return bytes, out.GetAll(), err
+	return bytes, out.ToList(), err
 }
 
 func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {
@@ -134,6 +134,7 @@ func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, 
 
 		return strings.Compare(a.Location, b.Location)
 	})
+
 	slices.SortStableFunc(remoteSlice, func(a, b scraper.Manifesto) int {
 		name := strings.Compare(a.Name, b.Name)
 		if name != 0 {
@@ -142,6 +143,29 @@ func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, 
 
 		return strings.Compare(a.Location, b.Location)
 	})
+
+	if len(localSlice) != len(remoteSlice) {
+		return false, nil
+	}
+
+	// Politecnico loves changing domains and web servers
+	// this is to not false our check
+	for i := range len(localSlice) {
+		rUrl, err := url.Parse(remoteSlice[i].Url)
+		if err != nil {
+			return false, err
+		}
+		lUrl, err := url.Parse(localSlice[i].Url)
+		if err != nil {
+			return false, err
+		}
+
+		lUrl.Host = "DOMAIN.polimi.it"
+		rUrl.Host = "DOMAIN.polimi.it"
+
+		localSlice[i].Url = lUrl.String()
+		remoteSlice[i].Url = rUrl.String()
+	}
 
 	return reflect.DeepEqual(localSlice, remoteSlice), nil
 }
