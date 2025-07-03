@@ -2,7 +2,6 @@ package constants
 
 const (
 	WebPolimiRisultatiAmmissioneDomainName = "www.risultati-ammissione.polimi.it"
-	WebPolimiHomepageUrl                   = "https://www.polimi.it"
 	WebPolimiAvvisiFuturiStudentiUrl       = "https://www.polimi.it/futuri-studenti/avvisi"
 
 	// useful to obtain school's manifest link

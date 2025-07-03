@@ -1,10 +1,8 @@
 package scraper
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
-	"net/http"
 	"reflect"
 	"slices"
 	"strconv"
@@ -12,24 +10,9 @@ import (
 	"sync"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PuerkitoBio/goquery"
 )
-
-func isRankingsNews(str string) bool {
-	newsTesters := []string{
-		"graduatorie", "graduatoria", "punteggi", "tol",
-		"immatricolazioni", "immatricolazione", "punteggio",
-		"matricola", "nuovi studenti",
-	}
-
-	for _, tester := range newsTesters {
-		if strings.Contains(str, tester) {
-			return true
-		}
-	}
-
-	return false
-}
 
 type Manifesto struct {
 	Name       string `json:"name"`
@@ -54,7 +37,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doc, res, err := loadDoc(url)
+			doc, res, err := utils.LoadHttpDoc(url)
 			if err != nil {
 				log.Fatalf("Error while loading school url %s. err: %v", url, err)
 			}
@@ -68,7 +51,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 				}
 			})
 
-			doc, res, err = loadDoc(manHref)
+			doc, res, err = utils.LoadHttpDoc(manHref)
 			if err != nil {
 				log.Fatalf("Error while loading manifest url %s. err: %v", manHref, err)
 			}
@@ -104,7 +87,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 					}
 
 					slog.Debug("found new manifesti url, scraping...", "url", optUrl.String())
-					mandoc, _, err := loadDoc(optUrl.String())
+					mandoc, _, err := utils.LoadHttpDoc(optUrl.String())
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -151,30 +134,4 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 	}
 
 	return cleanOut
-}
-
-func loadDoc(url string) (*goquery.Document, *http.Response, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, nil, fmt.Errorf("HTTP code is not 200. Status: %s", res.Status)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return doc, res, nil
 }

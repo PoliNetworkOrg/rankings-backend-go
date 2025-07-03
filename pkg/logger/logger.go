@@ -17,6 +17,6 @@ func GetDefaultLogger() *slog.Logger {
 			AddSource:  true,
 			Level:      slog.LevelDebug,
 			TimeFormat: time.Kitchen,
-			NoColor: !isatty.IsTerminal(w.Fd()),
+			NoColor:    !isatty.IsTerminal(w.Fd()),
 		}))
 }
