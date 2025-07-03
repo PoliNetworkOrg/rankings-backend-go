@@ -133,7 +133,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 	// In the future we could also track the School, so it would not cause the issue.
 	// e.g. Design & Engineering (Des, 3I), Geoinformatics Engineering (3I, IngCiv)
 	cleanOut := make([]Manifesto, 0, len(out))
-	for i, m1 := range out[:len(out)] {
+	for i, m1 := range out[:] {
 		count := 0
 		for _, m2 := range out[i+1:] {
 			if reflect.DeepEqual(m1, m2) {
@@ -144,7 +144,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 		if count == 0 {
 			cleanOut = append(cleanOut, m1)
 		} else {
-			// found a duplicate, not adding. 
+			// found a duplicate, not adding.
 			// it will be added when m1 -> m2 -> ... -> mn, with mn last duplicate
 			slog.Debug("scraper manifesti: found duplicate", "manifesto", m1)
 		}
