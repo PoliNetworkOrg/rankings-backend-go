@@ -37,7 +37,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doc, res, err := utils.LoadHttpDoc(url)
+			doc, res, _, err := utils.LoadHttpDoc(url)
 			if err != nil {
 				log.Fatalf("Error while loading school url %s. err: %v", url, err)
 			}
@@ -51,7 +51,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 				}
 			})
 
-			doc, res, err = utils.LoadHttpDoc(manHref)
+			doc, res, _, err = utils.LoadHttpDoc(manHref)
 			if err != nil {
 				log.Fatalf("Error while loading manifest url %s. err: %v", manHref, err)
 			}
@@ -87,7 +87,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 					}
 
 					slog.Debug("found new manifesti url, scraping...", "url", optUrl.String())
-					mandoc, _, err := utils.LoadHttpDoc(optUrl.String())
+					mandoc, _, _, err := utils.LoadHttpDoc(optUrl.String())
 					if err != nil {
 						log.Fatal(err)
 					}

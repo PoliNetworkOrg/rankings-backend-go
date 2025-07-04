@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
 	"slices"
 	"strings"
@@ -32,10 +33,10 @@ func main() {
 	}
 
 	mansWriter, err := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
-	mans := ScrapeManifestiWithLocal(&mansWriter, opts.force)
 	if err != nil {
 		panic(err)
 	}
+	mans := ScrapeManifestiWithLocal(&mansWriter, opts.force)
 
 	slog.Info("finished scraping manifesti, writing to file...", "found", len(mans))
 
@@ -52,7 +53,80 @@ func main() {
 		return
 	}
 
-	slog.Info("Scrape manifesti, equals to remote version?? SUS", "equals", manEquals)
+	slog.Info("Scrape manifesti, equals to remote version??", "equals", manEquals)
+
+	slog.Info("------------------------------------------")
+	slog.Info("START scraping new rankings links")
+	rankingsLinksWriter, err := writer.NewWriter[[]string](opts.dataDir)
+	if err != nil {
+		panic(err)
+	}
+	newRankingsLinks := scrapeRankingsLinks(&rankingsLinksWriter)
+	slog.Info("END scraping new rankings links", "count", len(newRankingsLinks))
+	slog.Info("------------------------------------------")
+	downloadedCount := 0
+	if len(newRankingsLinks) > 0 {
+		slog.Info("START downloading new rankings")
+
+		htmlRankings := scraper.DownloadRankings(newRankingsLinks)
+		successUrls := make([]string, 0)
+		for _, r := range htmlRankings {
+			successUrls = append(successUrls, r.Url.String())
+			if len(r.Pages) == 0 {
+				// we add also these ones to the successUrls, because those links are already expired.
+				// Politecnico loves to remove immediately the rankings from public availability, so they
+				// might leave public the link in their "news" section, but they already removed the linked ranking (so stupid...)
+				slog.Error("A ranking is empty. Probably its link is a 404.", "link", r.Url.String())
+				continue
+			}
+
+			rankingsHtmlWriter, err := writer.NewWriter[[]byte](path.Join(opts.dataDir, constants.OutputHtmlFolder, r.Id))
+			if err != nil {
+				panic(err)
+			}
+
+			downloadedCount += len(r.Pages)
+			for _, page := range r.Pages {
+				filename := page.Id + ".html"
+				err := rankingsHtmlWriter.Write(filename, page.Content)
+				if err != nil {
+					slog.Error("Could not save html to filesystem")
+					panic(err)
+				}
+			}
+		}
+
+		err = rankingsLinksWriter.AppendLines(constants.OutputLinksFilename, successUrls)
+		if err != nil {
+			slog.Error("Could not append new rankings links to file")
+			panic(err)
+		}
+	}
+
+	slog.Info("END", "downloaded page count", downloadedCount)
+	slog.Info("------------------------------------------")
+}
+
+func scrapeRankingsLinks(w *writer.Writer[[]string]) []string {
+	fn := constants.OutputLinksFilename
+	fp := w.GetFilePath(fn)
+	slog := slog.With("filepath", fp)
+
+	savedLinks, err := w.ReadLines(fn)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			slog.Warn("Saved file not found, running scraper...")
+			savedLinks = make([]string, 0)
+		} else {
+			slog.Error("Could not read lines from saved rankings links file. SCRAPER SKIPPED", "error", err)
+			return nil
+		}
+	} else {
+		slog.Info("already saved rankings links", "count", len(savedLinks))
+	}
+
+	newLinks := scraper.ScrapeRankingsLinks(savedLinks)
+	return newLinks
 }
 
 func ScrapeManifestiWithLocal(w *writer.Writer[[]scraper.Manifesto], force bool) []scraper.Manifesto {
