@@ -72,7 +72,7 @@ func main() {
 		successUrls := make([]string, 0)
 		for _, r := range htmlRankings {
 			successUrls = append(successUrls, r.Url.String())
-			if len(r.Pages) == 0 {
+			if r.PageCount == 0 {
 				// we add also these ones to the successUrls, because those links are already expired.
 				// Politecnico loves to remove immediately the rankings from public availability, so they
 				// might leave public the link in their "news" section, but they already removed the linked ranking (so stupid...)
@@ -80,20 +80,45 @@ func main() {
 				continue
 			}
 
-			rankingsHtmlWriter, err := writer.NewWriter[[]byte](path.Join(opts.dataDir, constants.OutputHtmlFolder, r.Id))
+			root := path.Join(opts.dataDir, constants.OutputHtmlFolder, r.Id)
+			rankingsHtmlWriter, err := writer.NewWriter[[]byte](root)
 			if err != nil {
 				panic(err)
 			}
 
-			downloadedCount += len(r.Pages)
-			for _, page := range r.Pages {
-				filename := page.Id + ".html"
-				err := rankingsHtmlWriter.Write(filename, page.Content)
+			if err := rankingsHtmlWriter.Write(constants.OutputHtmlRanking_IndexFilename, r.Index.Content); err != nil {
+				slog.Error("Could not save ranking index html to filesystem", "ranking_url", r.Url.String())
+				panic(err)
+			}
+
+			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByMeritFolder))
+			for _, page := range r.ByMerit {
+				err := rankingsHtmlWriter.Write(page.Id, page.Content)
 				if err != nil {
-					slog.Error("Could not save html to filesystem")
+					slog.Error("Could not save ranking byMerit table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
 					panic(err)
 				}
 			}
+
+			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByIdFolder))
+			for _, page := range r.ById {
+				err := rankingsHtmlWriter.Write(page.Id, page.Content)
+				if err != nil {
+					slog.Error("Could not save ranking byId table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
+					panic(err)
+				}
+			}
+
+			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByCourseFolder))
+			for _, page := range r.ByCourse {
+				err := rankingsHtmlWriter.Write(page.Id, page.Content)
+				if err != nil {
+					slog.Error("Could not save ranking byCourse table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
+					panic(err)
+				}
+			}
+
+			downloadedCount += r.PageCount
 		}
 
 		err = rankingsLinksWriter.AppendLines(constants.OutputLinksFilename, successUrls)

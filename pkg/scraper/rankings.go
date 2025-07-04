@@ -96,9 +96,13 @@ type HtmlPage struct {
 }
 
 type HtmlRanking struct {
-	Id    string
-	Url   *url.URL
-	Pages []HtmlPage
+	Id        string
+	Url       *url.URL
+	Index     HtmlPage
+	ByMerit   []HtmlPage
+	ById      []HtmlPage
+	ByCourse  []HtmlPage
+	PageCount int
 }
 
 func DownloadRankings(startingLinks []string) []HtmlRanking {
@@ -120,17 +124,19 @@ func DownloadRankings(startingLinks []string) []HtmlRanking {
 func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 	url, _ := url.Parse(startingLink)
 	splitted := strings.Split(url.Path, "/")
+	count := 0
 	id := splitted[1]
 
 	slog.Debug("start recursive download", "link", startingLink)
-	htmlRanking := HtmlRanking{Url: url, Id: id, Pages: make([]HtmlPage, 0)}
+	htmlRanking := HtmlRanking{Url: url, Id: id, PageCount: 0}
 	page, res, mainHtml, err := utils.LoadHttpDoc(startingLink)
 	if err != nil {
 		slog.Error("Could not load ranking main page.", "url", startingLink, "error", err)
 		return htmlRanking
 	}
 
-	htmlRanking.Pages = append(htmlRanking.Pages, HtmlPage{ Id: id, Content: mainHtml })
+	htmlRanking.Index = HtmlPage{Id: id, Content: mainHtml}
+	count++
 
 	indexesHrefs := make([]string, 0)
 	page.Find(".titolo a").Each(func(_ int, s *goquery.Selection) {
@@ -140,12 +146,13 @@ func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 
 	for _, href := range indexesHrefs {
 		link := utils.PatchRelativeHref(href, res.Request.URL)
-		page, indexRes, indexHtml, err := utils.LoadHttpDoc(link)
+		page, indexRes, _, err := utils.LoadHttpDoc(link)
 		if err != nil {
 			slog.Error("Error while loading ranking sub-index page.", "url", link, "error", err)
 			continue
 		}
-		htmlRanking.Pages = append(htmlRanking.Pages, HtmlPage{ Id: href, Content: indexHtml })
+
+		pages := make([]HtmlPage, 0)
 
 		ws := sync.WaitGroup{}
 		page.Find(".TableDati td a").Each(func(_ int, e *goquery.Selection) {
@@ -160,11 +167,36 @@ func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 					return
 				}
 
-				htmlRanking.Pages = append(htmlRanking.Pages, HtmlPage{ Id: href, Content: tableHtml })
+				pages = append(pages, HtmlPage{Id: href, Content: tableHtml})
 			}()
 		})
 		ws.Wait()
+
+		// IMPORTANT!!
+		// ByCourse MUST BE THE FIRST IF STATEMENT
+		// otherwise it will match ByMerit also for ByCourse Index
+		if strings.HasSuffix(href, constants.HtmlRankingUrl_IndexSuffix_ByCourse) {
+			slog.Debug("pattern matched index href with ByCourse", "href", href)
+			htmlRanking.ByCourse = pages
+		} else if strings.HasSuffix(href, constants.HtmlRankingUrl_IndexSuffix_ById) {
+			slog.Debug("pattern matched index href with ById", "href", href)
+			htmlRanking.ById = pages
+		} else if strings.HasSuffix(href, constants.HtmlRankingUrl_IndexSuffix_ByMerit) {
+			slog.Debug("pattern matched index href with ByMerit", "href", href)
+			htmlRanking.ByMerit = pages
+		} else {
+			slog.Error("Index not recognized, please investigate.", "index_href", href, "index_url", link)
+			continue
+		}
+
+		count += len(pages)
 	}
 
+	htmlRanking.PageCount = count
+	htmlRanking.Debug()
 	return htmlRanking
+}
+
+func (r *HtmlRanking) Debug() {
+	slog.Debug("HtmlRanking", "id", r.Id, "byCourse", len(r.ByCourse), "byMerit", len(r.ByMerit), "byId", len(r.ById))
 }

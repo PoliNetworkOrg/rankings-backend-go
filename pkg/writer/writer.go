@@ -22,6 +22,16 @@ func NewWriter[T interface{}](dirPath string) (Writer[T], error) {
 	return Writer[T]{DirPath: dirPath}, nil
 }
 
+func (w *Writer[T]) ChangeDirPath(newDirPath string) error {
+	err := utils.CreateFolderIfNotExists(newDirPath)
+	if err != nil {
+		return err
+	}
+	w.DirPath = newDirPath
+
+	return nil
+}
+
 func (w *Writer[T]) GetFilePath(filename string) string {
 	return path.Join(w.DirPath, filename)
 }
@@ -61,8 +71,8 @@ func (w *Writer[T]) WriteLines(filename string, data []string) error {
 
 	defer f.Close()
 	writer := bufio.NewWriter(f)
-	for _, line := range data { 
-		_, err := writer.WriteString(line + "\n") 
+	for _, line := range data {
+		_, err := writer.WriteString(line + "\n")
 		if err != nil {
 			return err
 		}
@@ -79,8 +89,8 @@ func (w *Writer[T]) AppendLines(filename string, data []string) error {
 
 	defer f.Close()
 	writer := bufio.NewWriter(f)
-	for _, line := range data { 
-		_, err := writer.WriteString(line + "\n") 
+	for _, line := range data {
+		_, err := writer.WriteString(line + "\n")
 		if err != nil {
 			return err
 		}
