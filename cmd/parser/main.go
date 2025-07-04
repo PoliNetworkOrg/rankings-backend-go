@@ -59,4 +59,13 @@ func main() {
 	}
 
 	slog.Info("manifesti parser: successful write", "filename", cmFn)
+
+	// note: this is hardcoded for testing
+	rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, "2025_20020_3239_html"))
+	if err != nil {
+		panic(err)
+	}
+
+	ranking := rp.Parse()
+	slog.Debug("Ranking parsed", "ranking", ranking)
 }

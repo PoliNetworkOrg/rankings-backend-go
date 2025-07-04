@@ -12,7 +12,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func LoadHttpDoc(url string) (*goquery.Document, *http.Response, []byte, error) {
+func LoadHttpHtml(url string) (*goquery.Document, *http.Response, []byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -41,6 +41,15 @@ func LoadHttpDoc(url string) (*goquery.Document, *http.Response, []byte, error) 
 	}
 
 	return doc, res, htmlBytes, nil
+}
+
+func LoadLocalHtml(data []byte) (*goquery.Document, error) {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
 }
 
 func PatchRelativeHref(href string, url *url.URL) string {

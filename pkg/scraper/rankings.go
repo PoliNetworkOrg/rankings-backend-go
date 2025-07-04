@@ -27,7 +27,7 @@ func ScrapeRankingsLinks(savedLinks []string) []string {
 }
 
 func scrapeAvvisiPage() []string {
-	page, res, _, err := utils.LoadHttpDoc(constants.WebPolimiAvvisiFuturiStudentiUrl)
+	page, res, _, err := utils.LoadHttpHtml(constants.WebPolimiAvvisiFuturiStudentiUrl)
 	if err != nil {
 		log.Fatalf("Error while loading avvisi page. url %s. err: %v", constants.WebPolimiAvvisiFuturiStudentiUrl, err)
 	}
@@ -49,7 +49,7 @@ func scrapeAvvisiPage() []string {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			page, _, _, err := utils.LoadHttpDoc(link)
+			page, _, _, err := utils.LoadHttpHtml(link)
 			if err != nil {
 				slog.Error("Error while loading a news page, skipping...", "url", link, "error", err)
 			}
@@ -129,7 +129,7 @@ func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 
 	slog.Debug("start recursive download", "link", startingLink)
 	htmlRanking := HtmlRanking{Url: url, Id: id, PageCount: 0}
-	page, res, mainHtml, err := utils.LoadHttpDoc(startingLink)
+	page, res, mainHtml, err := utils.LoadHttpHtml(startingLink)
 	if err != nil {
 		slog.Error("Could not load ranking main page.", "url", startingLink, "error", err)
 		return htmlRanking
@@ -146,7 +146,7 @@ func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 
 	for _, href := range indexesHrefs {
 		link := utils.PatchRelativeHref(href, res.Request.URL)
-		page, indexRes, _, err := utils.LoadHttpDoc(link)
+		page, indexRes, _, err := utils.LoadHttpHtml(link)
 		if err != nil {
 			slog.Error("Error while loading ranking sub-index page.", "url", link, "error", err)
 			continue
@@ -161,7 +161,7 @@ func ScrapeRecursiveRankingHtmls(startingLink string) HtmlRanking {
 				defer ws.Done()
 				href, _ := e.Attr("href")
 				link := utils.PatchRelativeHref(href, indexRes.Request.URL)
-				_, _, tableHtml, err := utils.LoadHttpDoc(link)
+				_, _, tableHtml, err := utils.LoadHttpHtml(link)
 				if err != nil {
 					slog.Error("Could not load ranking table page. url %s. err: %v", link, err)
 					return
