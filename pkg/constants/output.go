@@ -14,6 +14,7 @@ const (
 	OutputBaseFolder                 = "output"
 	OutputParsedManifestiFolder      = "manifesti"
 	OutputParsedManifestiAllFilename = "all.json"
+	OutputParsedRankingsFolder       = "rankings"
 
 	TmpDirectoryName = "tmp"
 )

@@ -39,7 +39,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 			defer wg.Done()
 			doc, res, _, err := utils.LoadHttpHtml(url)
 			if err != nil {
-				log.Fatalf("Error while loading school url %s. err: %v", url, err)
+				log.Fatalf("Error while loading school url %s. err: %w", url, err)
 			}
 
 			var manHref string
@@ -53,7 +53,7 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 
 			doc, res, _, err = utils.LoadHttpHtml(manHref)
 			if err != nil {
-				log.Fatalf("Error while loading manifest url %s. err: %v", manHref, err)
+				log.Fatalf("Error while loading manifest url %s. err: %w", manHref, err)
 			}
 
 			finalUrl := res.Request.URL

@@ -15,7 +15,8 @@ import (
 func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
 	opts := ParseOpts()
-	outDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
+	manifestiOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
+	rankingsOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedRankingsFolder)   // abs path
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
@@ -30,7 +31,7 @@ func main() {
 	}
 
 	byDegTypeMans := parser.ParseManifestiByDegreeType(inputMans)
-	dtmWriter, err := writer.NewWriter[parser.ManifestiByDegreeType](outDir)
+	dtmWriter, err := writer.NewWriter[parser.ManifestiByDegreeType](manifestiOutDir)
 	if err != nil {
 		panic(err)
 	}
@@ -46,7 +47,7 @@ func main() {
 	}
 
 	byCourseMans := parser.ParseManifestiByCourse(inputMans)
-	cmWriter, err := writer.NewWriter[parser.ManifestiByCourse](outDir)
+	cmWriter, err := writer.NewWriter[parser.ManifestiByCourse](manifestiOutDir)
 	if err != nil {
 		panic(err)
 	}
@@ -61,11 +62,23 @@ func main() {
 	slog.Info("manifesti parser: successful write", "filename", cmFn)
 
 	// note: this is hardcoded for testing
-	rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, "2025_20020_3239_html"))
+	rankingWriter, err := writer.NewWriter[[]parser.Ranking](rankingsOutDir)
+	if err != nil {
+		panic(err)
+	}
+
+	testRankingId := "2025_20102_5c05_html"
+	rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, testRankingId))
 	if err != nil {
 		panic(err)
 	}
 
 	ranking := rp.Parse()
-	slog.Debug("Ranking parsed", "ranking", ranking)
+	err = rankingWriter.JsonWrite(testRankingId+".json", []parser.Ranking{*ranking}, true)
+	if err != nil {
+		slog.Error("error while writing parsed ranking", "id", testRankingId)
+		panic(err)
+	}
+
+	slog.Info("ranking parser: successful write", "id", testRankingId)
 }

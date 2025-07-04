@@ -9,11 +9,11 @@ import (
 )
 
 type Phase struct {
-	Raw       string
-	Primary   uint8
-	Secondary uint8
-	Language  string
-	IsExtraEu bool
+	Raw       string `json:"raw"`
+	Primary   uint8  `json:"primary"`
+	Secondary uint8  `json:"secondary"`
+	Language  string `json:"language"`
+	IsExtraEu bool   `json:"isExtraEu"`
 }
 
 func (p *Phase) ParseText(raw string, ranking *Ranking) error {

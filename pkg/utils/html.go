@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"html"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -74,4 +75,14 @@ func PatchRelativeHref(href string, url *url.URL) string {
 	}
 
 	return parsed.String()
+}
+
+func GetFirstTextFragment(s *goquery.Selection) (string, error) {
+	innerHtml, err := s.Html()
+	if err != nil {
+		return "", err
+	}
+	splittedHtml := strings.Split(innerHtml, "<br/>") // they love <br/> to separate languages
+	unescaped := html.UnescapeString(splittedHtml[0])
+	return unescaped, nil
 }
