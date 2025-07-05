@@ -50,6 +50,26 @@ func CreateFolderIfNotExists(absPath string) error {
 	return err
 }
 
+func GetEntriesInFolder(absPath string) ([]os.DirEntry, error) {
+	path := absPath
+	if !filepath.IsAbs(path) {
+		slog.Warn("asking for absPath, provided a relative path", "provided", absPath)
+		var err error
+		path, err = filepath.Abs(absPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	exists, err := DoFolderExists(path)
+	if !exists || err != nil {
+		return nil, fmt.Errorf("Folder does not exist. Eventual error: %w", err)
+	}
+
+	entries, err := os.ReadDir(absPath)
+	return entries, err
+}
+
 func ReadAllFilesInFolder(absPath string) ([][]byte, error) {
 	path := absPath
 	if !filepath.IsAbs(path) {
