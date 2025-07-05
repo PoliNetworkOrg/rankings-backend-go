@@ -75,7 +75,7 @@ func OrganizeHtml(inputPath string, outDir string) {
 			byCourse = append(byCourse, scraper.HtmlPage{Content: data, Id: fn})
 			continue
 		}
-		if len(splitted) >= 5 && splitted[2] == "grad" && splitted[4] == "M" { // merit page
+		if len(splitted) >= 5 && splitted[2] == "grad" && splitted[4] == "M.html" { // merit page
 			data, err := os.ReadFile(fp)
 			if err != nil {
 				panic(err)
