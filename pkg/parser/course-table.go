@@ -16,6 +16,9 @@ import (
 func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 	// NOTE!!!
 	// Run this function AFTER having parsed the merit table
+	if len(p.Ranking.Rows) == 0 {
+		return fmt.Errorf("This ranking does not have Merit table rows, so the course table is not parsed")
+	}
 	if p.Ranking.Rows[0].Id == "" {
 		return fmt.Errorf("This ranking does not have Matricola IDs, so the course table is useless (we can't match data with merit table via the matricola id)")
 	}
@@ -71,13 +74,6 @@ func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 	})
 
 	p.Ranking.Rows = newRows
-
-	for _, row := range newRows {
-		if len(row.Courses) > 1 {
-			slog.Info("Found student in multiple courses", "student-id", row.Id)
-		}
-	}
-
 	return nil
 }
 
@@ -177,31 +173,30 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 			}
 		}
 
-		if s.Ofa == nil {
-			s.Ofa = make(map[string]bool, 0)
-		}
+		ofa := make(map[string]bool, 0)
 		if ofaEngIdx != -1 {
-			s.Ofa["ENG"] = p.getFieldByIndex(items, ofaEngIdx, "No") != "No"
+			ofa["ENG"] = p.getFieldByIndex(items, ofaEngIdx, "No") != "No"
 		}
 		if ofaTestIdx != -1 {
-			s.Ofa["TEST"] = p.getFieldByIndex(items, ofaTestIdx, "No") != "No"
+			ofa["TEST"] = p.getFieldByIndex(items, ofaTestIdx, "No") != "No"
 		}
+		s.Ofa = ofa
 
 		if canEnrollIdx != -1 {
 			c.CanEnroll = p.getFieldByIndex(items, canEnrollIdx, "No") != "No"
 		}
 
 		if firstSectionIdx != -1 {
-			if s.SectionsResults == nil {
-				s.SectionsResults = make(map[string]float32)
-			}
+			sectionsResults := map[string]float32{}
 			for i, section := range sections {
 				idx := i + firstSectionIdx
 				sectionText := strings.Replace(p.getFieldByIndex(items, idx, "-1"), ",", ".", 1)
 				if sectionResult, err := strconv.ParseFloat(sectionText, 32); err == nil {
-					s.SectionsResults[section] = float32(sectionResult)
+					sectionsResults[section] = float32(sectionResult)
 				}
 			}
+
+			s.SectionsResults = sectionsResults
 		}
 
 		if s.Courses == nil {

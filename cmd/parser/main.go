@@ -12,11 +12,13 @@ import (
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
+
 func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
 	opts := ParseOpts()
 	manifestiOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
 	rankingsOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedRankingsFolder)   // abs path
+	checkPhasesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, "test") // abs path
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
@@ -61,24 +63,53 @@ func main() {
 
 	slog.Info("manifesti parser: successful write", "filename", cmFn)
 
+	htmlFolderPath := path.Join(opts.dataDir, constants.OutputHtmlFolder)
+	htmlFolders, err := utils.GetEntriesInFolder(htmlFolderPath)
+	if err != nil {
+		slog.Error("error while listing saved html folders", "path", htmlFolderPath)
+		panic(err)
+	}
+
 	// note: this is hardcoded for testing
 	rankingWriter, err := writer.NewWriter[[]parser.Ranking](rankingsOutDir)
 	if err != nil {
 		panic(err)
 	}
 
-	testRankingId := "2025_20102_5c05_html"
-	rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, testRankingId))
-	if err != nil {
-		panic(err)
+	checkPhases := parser.NewCheckPhases(checkPhasesOutDir)
+	for _, entry := range htmlFolders {
+		if !entry.IsDir() {
+			continue
+		}
+
+		id := entry.Name()
+		if id == "style" {
+			slog.Warn("skipping html 'style' folder")
+			continue
+		}
+		rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, id))
+		if err != nil {
+			panic(err)
+		}
+
+		ranking := rp.Parse()
+		if ranking == nil {
+			slog.Error("ranking could not be parsed. return nil", "id", id)
+			continue
+		} 
+		checkPhases.Add(ranking)
+
+		err = rankingWriter.JsonWrite(id+".json", []parser.Ranking{*ranking}, true)
+		if err != nil {
+			slog.Error("error while writing parsed ranking", "id", id)
+			panic(err)
+		}
+
+		slog.Info("ranking parser: successful write", "id", id)
 	}
 
-	ranking := rp.Parse()
-	err = rankingWriter.JsonWrite(testRankingId+".json", []parser.Ranking{*ranking}, true)
-	if err != nil {
-		slog.Error("error while writing parsed ranking", "id", testRankingId)
-		panic(err)
+	if err = checkPhases.Write(); err != nil {
+		slog.Error("could not write checkPhases.", "error", err)
 	}
 
-	slog.Info("ranking parser: successful write", "id", testRankingId)
 }

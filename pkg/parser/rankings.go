@@ -110,7 +110,7 @@ func (p *RankingParser) Parse() *Ranking {
 	err = p.parseAllCourseTables(coursesTablePages)
 	if err != nil {
 		slog.Error("Could not parse Ranking course table pages", "folder-path", path.Join(p.rootDir, constants.OutputHtmlRanking_ByCourseFolder), "error", err)
-		return nil
+		return &p.Ranking
 	}
 
 	return &p.Ranking
@@ -122,72 +122,71 @@ func (p *RankingParser) parseIndex(html []byte) error {
 		return err
 	}
 
+	headings := make([]string, 5)
 	for i, s := range doc.Find(".CenterBar .intestazione").EachIter() {
 		text, err := utils.GetFirstTextFragment(s)
 		if err != nil {
 			return err
 		}
-		lowerText := strings.ToLower(text)
 
-		switch i {
-		case 0:
-			continue
-
-		case 1:
-			// year
-			splitted := strings.Split(text, " ")
-			yearSplitted := strings.Split(splitted[len(splitted)-1], "/")
-			year, err := strconv.ParseUint(yearSplitted[0], 10, 16)
-			if err != nil {
-				return fmt.Errorf("Could not parse year. error: %w", err)
-			}
-			p.Ranking.Year = uint16(year)
-			continue
-
-		case 2:
-			// language
-			if strings.Contains(lowerText, "inglese") {
-				p.Ranking.Phase.Language = constants.LangEn
-			} else {
-				p.Ranking.Phase.Language = constants.LangIt
-			}
-
-			// school
-			if lowerText == "urbanistica: città ambiente paesaggio" {
-				p.Ranking.School = constants.SchoolUrb
-				continue
-			}
-			if strings.Contains(lowerText, "design") {
-				p.Ranking.School = constants.SchoolDes
-				continue
-			}
-			if strings.Contains(lowerText, "architettura") {
-				p.Ranking.School = constants.SchoolArc
-				continue
-			}
-			if strings.Contains(lowerText, "ingegneria") {
-				p.Ranking.School = constants.SchoolIng
-				continue
-			}
-			return fmt.Errorf("Could not parse school. school string: %s", text)
-
-		case 3:
-			p.Ranking.Phase.IsExtraEu = false
-			err := p.Ranking.Phase.ParseText(text, &p.Ranking) // pass the non-lower version
-			if err != nil {
-				return fmt.Errorf("Could not parse phase. Phase raw string: '%s'. Error: %w", lowerText, err)
-			}
-
-		case 4:
-			if strings.Contains(lowerText, "extra-ue") {
-				p.Ranking.Phase.IsExtraEu = true
-			}
-			continue
-
-		default:
-			slog.Warn("Something is wrong with the index parsing, we got a 5-indexed element '.CenterBar .intestazione', maybe Polimi changed something. Please check.")
-			continue
+		if i >= 5 {
+			slog.Warn("Something is wrong with the index parsing, we got a 5-indexed element '.CenterBar .intestazione', maybe Polimi changed something. Please check", "heading index", i, "text", text)
+			break
 		}
+
+		headings[i] = text
+	}
+
+	if err = p.Ranking.parseYear(headings[1]); err != nil {
+		return err
+	}
+
+	if err = p.Ranking.parseSchoolLang(headings[2]); err != nil {
+		return err
+	}
+
+	p.Ranking.Phase.IsExtraEu = strings.Contains(strings.ToLower(headings[4]), "extra-ue")
+
+	if err = p.Ranking.Phase.ParseText(headings[3], &p.Ranking); err != nil {
+		return fmt.Errorf("Could not parse phase. Phase raw string: '%s'. Error: %w", strings.ToLower(headings[3]), err)
+	}
+
+	return nil
+}
+
+func (r *Ranking) parseYear(s string) error {
+	// year
+	splitted := strings.Split(s, " ")
+	yearSplitted := strings.Split(splitted[len(splitted)-1], "/")
+	year, err := strconv.ParseUint(yearSplitted[0], 10, 16)
+	if err != nil {
+		return fmt.Errorf("Could not parse year. error: %w", err)
+	}
+
+	r.Year = uint16(year)
+	return nil
+}
+
+func (r *Ranking) parseSchoolLang(s string) error {
+	lower := strings.ToLower(s)
+	// language
+	if strings.Contains(lower, "inglese") {
+		r.Phase.Language = constants.LangEn
+	} else {
+		r.Phase.Language = constants.LangIt
+	}
+
+	// school
+	if strings.Contains(lower, "urbanistica") {
+		r.School = constants.SchoolUrb
+	} else if strings.Contains(lower, "design") {
+		r.School = constants.SchoolDes
+	} else if strings.Contains(lower, "architettura") {
+		r.School = constants.SchoolArc
+	} else if strings.Contains(lower, "ingegneria") {
+		r.School = constants.SchoolIng
+	} else {
+		return fmt.Errorf("Could not parse school. school string: %s", s)
 	}
 
 	return nil
