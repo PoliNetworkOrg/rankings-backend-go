@@ -20,7 +20,9 @@ func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 		return fmt.Errorf("This ranking does not have Merit table rows, so the course table is not parsed")
 	}
 	if p.Ranking.Rows[0].Id == "" {
-		return fmt.Errorf("This ranking does not have Matricola IDs, so the course table is useless (we can't match data with merit table via the matricola id)")
+		// considering this as expected, so no error returned
+		slog.Warn("This ranking does not have Matricola IDs, so the course table is useless (we can't match data with merit table via the matricola id)", "id", p.Ranking.Id)
+		return nil
 	}
 
 	wg := sync.WaitGroup{}
