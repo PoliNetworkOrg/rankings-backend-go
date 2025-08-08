@@ -45,7 +45,7 @@ func main() {
 			panic(err)
 		}
 
-		slog.Info("manifesti parser: successful write", "filename", fn)
+		slog.Info("[manifesti] successful write", "filename", fn)
 	}
 
 	byCourseMans := parser.ParseManifestiByCourse(inputMans)
@@ -61,7 +61,7 @@ func main() {
 		panic(err)
 	}
 
-	slog.Info("manifesti parser: successful write", "filename", cmFn)
+	slog.Info("[manifesti] successful write", "filename", cmFn)
 
 	htmlFolderPath := path.Join(opts.dataDir, constants.OutputHtmlFolder)
 	htmlFolders, err := utils.GetEntriesInFolder(htmlFolderPath)
@@ -84,9 +84,10 @@ func main() {
 
 		id := entry.Name()
 		if id == "style" {
-			slog.Warn("skipping html 'style' folder")
+			slog.Warn("[rankings] skipping html 'style' folder")
 			continue
 		}
+
 		rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, id))
 		if err != nil {
 			panic(err)
@@ -94,18 +95,18 @@ func main() {
 
 		ranking := rp.Parse()
 		if ranking == nil {
-			slog.Error("ranking could not be parsed. return nil", "id", id)
+			slog.Error("[rankings] could not parse. return nil", "id", id)
 			continue
 		} 
 		checkPhases.Add(ranking)
 
 		err = rankingWriter.JsonWrite(id+".json", []parser.Ranking{*ranking}, true)
 		if err != nil {
-			slog.Error("error while writing parsed ranking", "id", id)
+			slog.Error("[rankings] error while writing to fs (PANIC)", "id", id)
 			panic(err)
 		}
 
-		slog.Info("ranking parser: successful write", "id", id)
+		slog.Info("[rankings] successful write", "id", id)
 	}
 
 	if err = checkPhases.Write(); err != nil {
