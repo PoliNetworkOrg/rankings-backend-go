@@ -148,8 +148,13 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 
 	for _, row := range page.Find(".TableDati-tbody tr").EachIter() {
 		items := row.Find("td").Map(func(i int, s *goquery.Selection) string { return s.Text() })
+		if len(items) == 1 && strings.Contains(items[0], "Nessun candidato") {
+			slog.Debug("Course table is empty")
+			continue
+		}
+
 		if len(items) == 0 {
-			slog.Error("Error while parsing course table, empty table row")
+			slog.Warn("Course table: <tr> contains 0 <td>, more in-depth investigation recommended")
 			continue
 		}
 
