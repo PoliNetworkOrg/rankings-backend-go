@@ -110,7 +110,7 @@ func (p *RankingParser) parseMeritTablePage(html []byte) ([]StudentRow, error) {
 		}
 
 		s.Id = p.getFieldByIndex(items, idIdx, "")
-		if s.Id == "" && p.Ranking.Year > 2020 {
+		if s.Id == "" && p.Ranking.Year > 2021 {
 			slog.Warn("Merit row without matricola ID", "ranking-id", p.Ranking.Id, "position", s.Position)
 		}
 
