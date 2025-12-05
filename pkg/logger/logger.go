@@ -11,7 +11,7 @@ import (
 )
 
 func GetDefaultLogger() *slog.Logger {
-	w := os.Stderr
+	w := os.Stdout
 
 	return slog.New(
 		tint.NewHandler(w, &tint.Options{
