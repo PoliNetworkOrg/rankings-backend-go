@@ -24,9 +24,19 @@ type StudentRow struct {
 	Id        string `json:"id"`
 	BirthDate string `json:"birthDate,omitempty"`
 
-	Position  uint16         `json:"position"`
-	CanEnroll bool           `json:"canEnroll"`
-	Courses   []CourseStatus `json:"courses"`
+	Position uint16 `json:"position"`
+
+	// if CanEnroll is true, we have two options:
+	// 1. we have Id
+	//		in this case, we have all the student's subscribed courses linked
+	//		but one and only one has CanEnroll field true, so we get it from there
+	// 2. we don't have Id
+	//		in this case, we only have the course in which the student is allowed to be enrolled
+	//
+	// if CanEnroll is false, we dont give a fuck
+	CanEnroll bool `json:"canEnroll"`
+
+	Courses []CourseStatus `json:"courses"`
 
 	Result          float32            `json:"result"`
 	EnglishResult   uint8              `json:"englishResult,omitempty"`
@@ -105,7 +115,7 @@ func (p *RankingParser) Parse() *Ranking {
 		slog.Error("Could not parse Ranking merit table pages", "folder-path", path.Join(p.rootDir, constants.OutputHtmlRanking_ByMeritFolder), "error", err)
 		return nil
 	}
-	//
+
 	// COURSE
 	err = p.parseAllCourseTables(coursesTablePages)
 	if err != nil {
