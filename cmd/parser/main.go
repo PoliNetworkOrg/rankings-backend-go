@@ -70,7 +70,7 @@ func main() {
 	}
 
 	// note: this is hardcoded for testing
-	rankingWriter, err := writer.NewWriter[[]parser.Ranking](rankingsOutDir)
+	rankingWriter, err := writer.NewWriter[parser.Ranking](rankingsOutDir)
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +99,7 @@ func main() {
 		}
 		checkPhases.Add(ranking)
 
-		err = rankingWriter.JsonWrite(id+".json", []parser.Ranking{*ranking}, true)
+		err = rankingWriter.JsonWrite(id+".json", *ranking, true)
 		if err != nil {
 			slog.Error("[rankings] error while writing to fs (PANIC)", "id", id)
 			panic(err)
