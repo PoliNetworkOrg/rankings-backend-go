@@ -113,6 +113,9 @@ func (p *RankingParser) parseMeritTablePage(html []byte) ([]StudentRow, error) {
 		if s.Id == "" && p.Ranking.Year > 2021 {
 			slog.Warn("Merit row without matricola ID", "ranking-id", p.Ranking.Id, "position", s.Position)
 		}
+		if len(s.Id) > 0 {
+			s.Id = utils.HashWithSalt(s.Id)
+		}
 
 		resultStr := p.getFieldByIndex(items, resultIdx, "0")
 		if result, err := strconv.ParseFloat(strings.Replace(resultStr, ",", ".", 1), 32); err == nil {

@@ -167,6 +167,9 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		if id == "" && p.Ranking.Year > 2020 {
 			slog.Warn("Course table row without matricola ID", "position-in-table", c.Position)
 		}
+		if len(id) > 0 {
+			id = utils.HashWithSalt(id)
+		}
 
 		p.mu.Lock()
 		s := p.Ranking.rowsById[id] // student row parsed from merit table
