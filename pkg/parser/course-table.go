@@ -120,11 +120,11 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 			posIdx = idx
 			continue
 		}
-		if text == "matricola" {
+		if strings.Contains(text, "matricola") {
 			idIdx = idx
 			continue
 		}
-		if text == "nascita" {
+		if strings.Contains(text, "nascita") {
 			birthIdx = idx
 			continue
 		}
@@ -162,7 +162,8 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 			c.Position = uint16(pos)
 		}
 
-		id := p.getFieldByIndex(items, idIdx, "")
+		rawId := p.getFieldByIndex(items, idIdx, "")
+		id := strings.TrimSpace(strings.Replace(rawId, "(Contingente Marco Polo)", "", 1))
 		if id == "" && p.Ranking.Year > 2020 {
 			slog.Warn("Course table row without matricola ID", "position-in-table", c.Position)
 		}

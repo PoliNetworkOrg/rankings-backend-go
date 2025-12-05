@@ -12,13 +12,12 @@ import (
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
-
 func main() {
 	slog.SetDefault(logger.GetDefaultLogger())
 	opts := ParseOpts()
 	manifestiOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
 	rankingsOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedRankingsFolder)   // abs path
-	checkPhasesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, "test") // abs path
+	checkPhasesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, "test")                              // abs path
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
@@ -55,7 +54,7 @@ func main() {
 	}
 
 	cmFn := constants.OutputParsedManifestiAllFilename
-	err = cmWriter.JsonWrite("all.json", byCourseMans, false)
+	err = cmWriter.JsonWrite(cmFn, byCourseMans, false)
 	if err != nil {
 		slog.Error("error while writing parsed manifesti byCourse (all)", "filename", cmFn)
 		panic(err)
@@ -97,7 +96,7 @@ func main() {
 		if ranking == nil {
 			slog.Error("[rankings] could not parse. return nil", "id", id)
 			continue
-		} 
+		}
 		checkPhases.Add(ranking)
 
 		err = rankingWriter.JsonWrite(id+".json", []parser.Ranking{*ranking}, true)
@@ -112,5 +111,4 @@ func main() {
 	if err = checkPhases.Write(); err != nil {
 		slog.Error("could not write checkPhases.", "error", err)
 	}
-
 }
