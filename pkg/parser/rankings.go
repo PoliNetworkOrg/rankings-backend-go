@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,9 +50,10 @@ type Ranking struct {
 	School string `json:"school"`
 	Year   uint16 `json:"year"`
 
-	// Stats    Stats
-	Phase Phase        `json:"phase"`
-	Rows  []StudentRow `json:"rows"`
+	// Stats   Stats
+	Phase   Phase               `json:"phase"`
+	Courses map[string][]string `json:"courses"`
+	Rows    []StudentRow        `json:"rows"`
 
 	rowsById map[string]StudentRow
 }
@@ -62,6 +64,13 @@ type RankingParser struct {
 	Ranking Ranking
 
 	mu sync.Mutex
+}
+
+func NewRanking() *Ranking {
+	return &Ranking{
+		rowsById: map[string]StudentRow{},
+		Courses:  map[string][]string{},
+	}
 }
 
 func NewRankingParser(rootDir string) (*RankingParser, error) {
@@ -75,7 +84,7 @@ func NewRankingParser(rootDir string) (*RankingParser, error) {
 		return nil, err
 	}
 
-	parser := &RankingParser{rootDir: rootDir, reader: reader, Ranking: Ranking{}, mu: sync.Mutex{}}
+	parser := &RankingParser{rootDir: rootDir, reader: reader, Ranking: *NewRanking(), mu: sync.Mutex{}}
 	return parser, nil
 }
 
@@ -200,4 +209,21 @@ func (r *Ranking) parseSchoolLang(s string) error {
 	}
 
 	return nil
+}
+
+var rankingCoursesMutex = sync.Mutex{}
+
+func (r *Ranking) addCourse(title, location string) {
+	locations := []string{}
+	rankingCoursesMutex.Lock()
+	if prev, exists := r.Courses[title]; exists {
+		locations = slices.Concat(locations, prev)
+	}
+
+	if len(location) > 0 {
+		locations = append(locations, location)
+	}
+
+	r.Courses[title] = locations
+	rankingCoursesMutex.Unlock()
 }

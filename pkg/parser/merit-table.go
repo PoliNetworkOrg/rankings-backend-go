@@ -57,10 +57,6 @@ func (p *RankingParser) parseMeritTablePage(html []byte) ([]StudentRow, error) {
 
 	idIdx, resultIdx, posIdx, statusIdx, ofaEngIdx, ofaTestIdx := -1, -1, -1, -1, -1, -1
 
-	if p.Ranking.rowsById == nil {
-		p.Ranking.rowsById = make(map[string]StudentRow, 0)
-	}
-
 	rows := make([]StudentRow, 0)
 	for i, s := range page.Find(".TableDati .elenco-campi th").EachIter() {
 		firstText, err := utils.GetFirstTextFragment(s)

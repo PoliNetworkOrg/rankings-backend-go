@@ -1,6 +1,6 @@
-- [ ] list course availables in ranking main object
 - [ ] create indexes
 - [ ] create stats
 - [ ] create dateFound
 - [ ] come up with an efficient solution to save all matricole allowing global search
+- [x] list course availables in ranking main object
 - [x] to hash matricole

@@ -86,8 +86,9 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 	}
 
 	title, location := getCourseTitleLocation((page.Find(".CenterBar .titolo").First()).Text())
-	c := CourseStatus{Title: title, Location: location}
 	slog := slog.With("ranking-id", p.Ranking.Id, "course-title", title, "course-location", location)
+	c := CourseStatus{Title: title, Location: location}
+	p.Ranking.addCourse(title, location)
 
 	idIdx, birthIdx, posIdx, canEnrollIdx, engResultIdx, firstSectionIdx, ofaEngIdx, ofaTestIdx := -1, -1, -1, -1, -1, -1, -1, -1
 	sections := make([]string, 0)
