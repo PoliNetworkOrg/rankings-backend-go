@@ -231,7 +231,7 @@ func (p *RankingParser) getFieldByIndex(items []string, index int, defaultValue 
 		return defaultValue
 	}
 
-	return items[index]
+	return strings.TrimSpace(items[index])
 }
 
 func getCourseTitleLocation(raw string) (string, string) {
