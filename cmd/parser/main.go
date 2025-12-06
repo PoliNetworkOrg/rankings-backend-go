@@ -18,6 +18,7 @@ func main() {
 	manifestiOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
 	rankingsOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedRankingsFolder)   // abs path
 	checkPhasesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, "test")                              // abs path
+	idHashIndexOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder)                                      // abs path
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
@@ -76,6 +77,7 @@ func main() {
 	}
 
 	checkPhases := parser.NewCheckPhases(checkPhasesOutDir)
+	idHashIndexParser := parser.NewIdHashIndexParser(idHashIndexOutDir)
 	for _, entry := range htmlFolders {
 		if !entry.IsDir() {
 			continue
@@ -100,6 +102,9 @@ func main() {
 		checkPhases.Add(ranking)
 
 		err = rankingWriter.JsonWrite(id+".json", *ranking, true)
+		idHashIndexParser.Add(ranking)
+
+		err = rankingWriter.JsonWrite(id+".json", *ranking, true)
 		if err != nil {
 			slog.Error("[rankings] error while writing to fs (PANIC)", "id", id)
 			panic(err)
@@ -110,5 +115,9 @@ func main() {
 
 	if err = checkPhases.Write(); err != nil {
 		slog.Error("could not write checkPhases.", "error", err)
+	}
+
+	if err = idHashIndexParser.Write(); err != nil {
+		slog.Error("could not write studentIdHashIndex.", "error", err)
 	}
 }
