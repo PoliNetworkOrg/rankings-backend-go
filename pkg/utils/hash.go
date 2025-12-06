@@ -16,6 +16,5 @@ func HashWithSalt(input string) string {
 	hash := sha256.Sum256([]byte(salted))
 	hexHash := hex.EncodeToString(hash[:])
 
-	hashLen := min(maxCharHash, len(hexHash))
-	return strings.ToLower(hexHash[:hashLen])
+	return strings.ToLower(hexHash[:maxCharHash])
 }
