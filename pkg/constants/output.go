@@ -18,6 +18,10 @@ const (
 	OutputParsedManifestiFolder      = "manifesti"
 	OutputParsedManifestiAllFilename = "all.json"
 	OutputParsedRankingsFolder       = "rankings"
+	OutputIndexesFolder              = "indexes"
+
+	OutputIndexBySchoolYearFilename = "bySchoolYear.json"
+	OutputIndexByYearSchoolFilename = "byYearSchool.json"
 
 	TmpDirectoryName = "tmp"
 )

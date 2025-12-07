@@ -114,7 +114,6 @@ func (p *Phase) parseMethod1(lower string) error {
 		return fmt.Errorf("Invalid raw phase string, splitted by spaces array length is not 2. Raw: '%s' (method 1)", lower)
 	}
 
-
 	number := utils.GetOrdinalNumberInt(splitted[0])
 	if number == 0 {
 		return fmt.Errorf("Could not parse phase (secondary) number. Raw: '%s' (method 1)", lower)
@@ -123,10 +122,10 @@ func (p *Phase) parseMethod1(lower string) error {
 	if splitted[1] == "fase" {
 		// es. terza fase (see ing 2020)
 		p.Primary = number
-		p.Secondary	= 0
+		p.Secondary = 0
 	} else {
 		p.Primary = 0
-		p.Secondary	= number
+		p.Secondary = number
 	}
 
 	return nil
@@ -151,7 +150,7 @@ func (p *Phase) parseMethod2(lower string, school string) error {
 		}
 
 		if school == constants.SchoolArc {
-			slog.Debug("extra-eu arc not handled (method 2)", "lower", lower)	
+			slog.Debug("extra-eu arc not handled (method 2)", "lower", lower)
 			panic("NOT HANDLED")
 		}
 

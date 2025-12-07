@@ -40,7 +40,7 @@ func (p *IdHashIndexParser) Add(ranking *Ranking) {
 
 func (p *IdHashIndexParser) Write() error {
 	w := writer.NewWriter[map[string][]string](p.outDir)
-	err := w.JsonWrite("studentIdHashIndex.json", p.index, true)
+	err := w.JsonWrite("byStudentIdHash.json", p.index, true)
 	if err != nil {
 		return fmt.Errorf("error while performing write (1) in IdHashIndexParser, error: %w", err)
 	}

@@ -17,8 +17,7 @@ func main() {
 	opts := ParseOpts()
 	manifestiOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedManifestiFolder) // abs path
 	rankingsOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputParsedRankingsFolder)   // abs path
-	checkPhasesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, "test")                              // abs path
-	idHashIndexOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder)                                      // abs path
+	indexesOutDir := path.Join(opts.dataDir, constants.OutputBaseFolder, constants.OutputIndexesFolder)           // abs path
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
@@ -65,8 +64,9 @@ func main() {
 	// note: this is hardcoded for testing
 	rankingWriter := writer.NewWriter[parser.Ranking](rankingsOutDir)
 
-	checkPhases := parser.NewCheckPhases(checkPhasesOutDir)
-	idHashIndexParser := parser.NewIdHashIndexParser(idHashIndexOutDir)
+	indexGenerator := parser.NewIndexGenerator(indexesOutDir)
+
+	idHashIndexParser := parser.NewIdHashIndexParser(indexesOutDir)
 	for _, entry := range htmlFolders {
 		if !entry.IsDir() {
 			continue
@@ -85,7 +85,7 @@ func main() {
 			slog.Error("[rankings] could not parse. return nil", "id", id)
 			continue
 		}
-		checkPhases.Add(ranking)
+		indexGenerator.Add(ranking)
 
 		err = rankingWriter.JsonWrite(id+".json", *ranking, true)
 		idHashIndexParser.Add(ranking)
@@ -99,8 +99,8 @@ func main() {
 		slog.Info("[rankings] successful write", "id", id)
 	}
 
-	if err = checkPhases.Write(); err != nil {
-		slog.Error("could not write checkPhases.", "error", err)
+	if err = indexGenerator.Generate(); err != nil {
+		slog.Error("could not write indexes.", "error", err)
 	}
 
 	if err = idHashIndexParser.Write(); err != nil {
