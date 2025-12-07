@@ -10,10 +10,17 @@ import (
 	"github.com/pborman/getopt/v2"
 )
 
+type BruteforceOpt struct {
+	enabled bool
+	year    uint
+}
+
 type Opts struct {
-	dataDir string
+	dataDir  string
 	isTmpDir bool
-	force bool
+	force    bool
+
+	bruteforce BruteforceOpt
 }
 
 func ParseOpts() Opts {
@@ -23,6 +30,7 @@ func ParseOpts() Opts {
 	help := getopt.BoolLong("help", 'h', "Shows the help menu")
 	dataDir := getopt.StringLong("data-dir", 'd', tmpDir, "Path of the data folder (containing html, json, ...). Defaults to tmp directory")
 	force := getopt.BoolLong("force", 'f', "Force the scraper to run and overwrite files")
+	bruteforce := getopt.UintLong("bruteforce", 'b', 0, "If you need to run bruteforce link scraper, use this option and specify the year to bruteforce as value")
 
 	// parsing
 	getopt.Parse()
@@ -48,9 +56,20 @@ func ParseOpts() Opts {
 		os.Exit(1)
 	}
 
-	return Opts {
-		dataDir: absDataDir,
+	bfYear := *bruteforce
+	if bfYear != 0 && (bfYear < 2000 || bfYear > 2200) {
+		slog.Error("You must set the --bruteforce flag to a real year.")
+		os.Exit(2)
+	}
+
+	return Opts{
+		dataDir:  absDataDir,
 		isTmpDir: absDataDir == tmpDir,
-		force: *force,
+		force:    *force,
+
+		bruteforce: BruteforceOpt{
+			enabled: bfYear != 0,
+			year:    bfYear,
+		},
 	}
 }

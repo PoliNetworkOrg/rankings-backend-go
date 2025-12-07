@@ -2,7 +2,10 @@ package constants
 
 const (
 	OutputHtmlFolder            = "html"
-	OutputLinksFilename         = "links.txt"
+	OutputLinksFolder           = "links"
+	OutputBruteForceFolder      = "bruteforce"
+	OutputScrapedLinksFilename  = "scraped.json"
+	OutputBrokenLinksFilename   = "broken.json"
 	OutputStatsFilname          = "stats.json"
 	OutputManifestiListFilename = "manifesti_list.json"
 

@@ -39,12 +39,8 @@ func (p *IdHashIndexParser) Add(ranking *Ranking) {
 }
 
 func (p *IdHashIndexParser) Write() error {
-	w, err := writer.NewWriter[map[string][]string](p.outDir)
-	if err != nil {
-		return fmt.Errorf("error while creating writer (1) in IdHashIndexParser, error: %w", err)
-	}
-
-	err = w.JsonWrite("studentIdHashIndex.json", p.index, true)
+	w := writer.NewWriter[map[string][]string](p.outDir)
+	err := w.JsonWrite("studentIdHashIndex.json", p.index, true)
 	if err != nil {
 		return fmt.Errorf("error while performing write (1) in IdHashIndexParser, error: %w", err)
 	}

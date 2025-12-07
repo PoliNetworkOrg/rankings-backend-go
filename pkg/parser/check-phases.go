@@ -47,19 +47,13 @@ func (cp *CheckPhases) CreateGrouped() {
 func (cp *CheckPhases) Write() error {
 	cp.CreateGrouped()
 
-	w, err := writer.NewWriter[[]checkPhase](cp.outDir)
-	if err != nil {
-		return fmt.Errorf("error while creating writer (1) in CheckPhases, error: %w", err)
-	}
-	err = w.JsonWrite("phases.json", cp.phases, true)
+	w := writer.NewWriter[[]checkPhase](cp.outDir)
+	err := w.JsonWrite("phases.json", cp.phases, true)
 	if err != nil {
 		return fmt.Errorf("error while performing write (1) in CheckPhases, error: %w", err)
 	}
 
-	gw, err := writer.NewWriter[cpMap](cp.outDir)
-	if err != nil {
-		return fmt.Errorf("error while creating writer (2) in CheckPhases, error: %w", err)
-	}
+	gw := writer.NewWriter[cpMap](cp.outDir)
 	err = gw.JsonWrite("phases_grouped.json", cp.groupedPhases, true)
 	if err != nil {
 		return fmt.Errorf("error while performing write (2) in CheckPhases, error: %w", err)

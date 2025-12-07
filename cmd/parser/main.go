@@ -22,10 +22,7 @@ func main() {
 
 	slog.Info("argv validation", "data_dir", opts.dataDir)
 
-	smWriter, err := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
-	if err != nil {
-		panic(err)
-	}
+	smWriter := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
 
 	inputMans, err := smWriter.JsonRead(constants.OutputManifestiListFilename)
 	if err != nil {
@@ -33,10 +30,8 @@ func main() {
 	}
 
 	byDegTypeMans := parser.ParseManifestiByDegreeType(inputMans)
-	dtmWriter, err := writer.NewWriter[parser.ManifestiByDegreeType](manifestiOutDir)
-	if err != nil {
-		panic(err)
-	}
+	dtmWriter := writer.NewWriter[parser.ManifestiByDegreeType](manifestiOutDir)
+
 	for _, m := range byDegTypeMans {
 		fn := utils.MakeFilename(m.DegreeType, ".json")
 		err := dtmWriter.JsonWrite(fn, m, false)
@@ -49,10 +44,7 @@ func main() {
 	}
 
 	byCourseMans := parser.ParseManifestiByCourse(inputMans)
-	cmWriter, err := writer.NewWriter[parser.ManifestiByCourse](manifestiOutDir)
-	if err != nil {
-		panic(err)
-	}
+	cmWriter := writer.NewWriter[parser.ManifestiByCourse](manifestiOutDir)
 
 	cmFn := constants.OutputParsedManifestiAllFilename
 	err = cmWriter.JsonWrite(cmFn, byCourseMans, false)
@@ -71,10 +63,7 @@ func main() {
 	}
 
 	// note: this is hardcoded for testing
-	rankingWriter, err := writer.NewWriter[parser.Ranking](rankingsOutDir)
-	if err != nil {
-		panic(err)
-	}
+	rankingWriter := writer.NewWriter[parser.Ranking](rankingsOutDir)
 
 	checkPhases := parser.NewCheckPhases(checkPhasesOutDir)
 	idHashIndexParser := parser.NewIdHashIndexParser(idHashIndexOutDir)
@@ -89,10 +78,7 @@ func main() {
 			continue
 		}
 
-		rp, err := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, id))
-		if err != nil {
-			panic(err)
-		}
+		rp := parser.NewRankingParser(path.Join(opts.dataDir, constants.OutputHtmlFolder, id))
 
 		ranking := rp.Parse()
 		if ranking == nil {

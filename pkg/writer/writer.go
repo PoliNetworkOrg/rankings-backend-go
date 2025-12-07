@@ -13,13 +13,13 @@ type Writer[T interface{}] struct {
 	DirPath string
 }
 
-func NewWriter[T interface{}](dirPath string) (Writer[T], error) {
+func NewWriter[T interface{}](dirPath string) Writer[T] {
 	err := utils.CreateFolderIfNotExists(dirPath)
 	if err != nil {
-		return Writer[T]{}, err
+		panic(err)
 	}
 
-	return Writer[T]{DirPath: dirPath}, nil
+	return Writer[T]{DirPath: dirPath}
 }
 
 func (w *Writer[T]) ChangeDirPath(newDirPath string) error {
@@ -38,7 +38,7 @@ func (w *Writer[T]) GetFilePath(filename string) string {
 
 func (w *Writer[T]) Write(filename string, data []byte) error {
 	p := w.GetFilePath(filename)
-	return os.WriteFile(p, data, 0664)
+	return os.WriteFile(p, data, 0o664)
 }
 
 func (w *Writer[T]) Read(filename string) ([]byte, error) {
@@ -64,7 +64,7 @@ func (w *Writer[T]) ReadLines(filename string) ([]string, error) {
 
 func (w *Writer[T]) WriteLines(filename string, data []string) error {
 	p := w.GetFilePath(filename)
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE, 0664)
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE, 0o664)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (w *Writer[T]) WriteLines(filename string, data []string) error {
 
 func (w *Writer[T]) AppendLines(filename string, data []string) error {
 	p := w.GetFilePath(filename)
-	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o664)
 	if err != nil {
 		return err
 	}

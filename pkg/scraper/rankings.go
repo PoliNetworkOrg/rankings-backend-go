@@ -4,7 +4,6 @@ import (
 	"log"
 	"log/slog"
 	"net/url"
-	"slices"
 	"strings"
 	"sync"
 
@@ -13,17 +12,10 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func ScrapeRankingsLinks(savedLinks []string) []string {
+func ScrapeRankingsLinks() []string {
 	links := scrapeAvvisiPage()
 	slog.Debug("output of scrapeAvvisiPage", "count", len(links))
-	newLinks := make([]string, 0)
-	for _, link := range links {
-		if !slices.Contains(savedLinks, link) {
-			newLinks = append(newLinks, link)
-		}
-	}
-
-	return newLinks
+	return links
 }
 
 func scrapeAvvisiPage() []string {

@@ -73,19 +73,9 @@ func NewRanking() *Ranking {
 	}
 }
 
-func NewRankingParser(rootDir string) (*RankingParser, error) {
-	ok, err := utils.DoFolderExists(rootDir)
-	if !ok || err != nil {
-		return nil, fmt.Errorf("Cannot create the RankingParser instance because the rootDir specified does not exist. rootDir: %s", rootDir)
-	}
-
-	reader, err := writer.NewWriter[[]byte](rootDir)
-	if err != nil {
-		return nil, err
-	}
-
-	parser := &RankingParser{rootDir: rootDir, reader: reader, Ranking: *NewRanking(), mu: sync.Mutex{}}
-	return parser, nil
+func NewRankingParser(rootDir string) *RankingParser {
+	reader := writer.NewWriter[[]byte](rootDir)
+	return &RankingParser{rootDir: rootDir, reader: reader, Ranking: *NewRanking(), mu: sync.Mutex{}}
 }
 
 func (p *RankingParser) Parse() *Ranking {

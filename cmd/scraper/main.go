@@ -18,6 +18,7 @@ import (
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/logger"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/parser"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/scraper"
+	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/writer"
 )
 
@@ -26,28 +27,30 @@ func main() {
 
 	opts := ParseOpts()
 
+	manifestiOutDir := opts.dataDir
+	linksOutDir := path.Join(opts.dataDir, constants.OutputLinksFolder)
+	bfLinksOutDir := path.Join(opts.dataDir, constants.OutputLinksFolder, constants.OutputBruteForceFolder)
+	savedHtmlsFolder := path.Join(opts.dataDir, constants.OutputHtmlFolder)
+
 	if opts.isTmpDir {
 		slog.Warn("ATTENION! using tmp directory instead of data directory. Check --help for more information on data dir.", "dataDir", opts.dataDir)
 	} else {
 		slog.Info("Argv validation", "data_dir", opts.dataDir)
 	}
 
-	mansWriter, err := writer.NewWriter[[]scraper.Manifesto](opts.dataDir)
-	if err != nil {
-		panic(err)
-	}
-	mans := ScrapeManifestiWithLocal(&mansWriter, opts.force)
+	mansWriter := writer.NewWriter[[]scraper.Manifesto](manifestiOutDir)
+	mans := scrapeManifestiWithLocal(&mansWriter, opts.force)
 
 	slog.Info("finished scraping manifesti, writing to file...", "found", len(mans))
 
-	err = mansWriter.JsonWrite(constants.OutputManifestiListFilename, mans, false)
+	err := mansWriter.JsonWrite(constants.OutputManifestiListFilename, mans, false)
 	if err != nil {
 		panic(err)
 	}
 
 	slog.Info("successfully written manifesti to file!")
 
-	manEquals, err := DoLocalEqualsRemoteManifesti(&mansWriter)
+	manEquals, err := doLocalEqualsRemoteManifesti(&mansWriter)
 	if err != nil {
 		slog.Error("cannot perform comparison between local and remote versions", "err", err)
 		return
@@ -57,104 +60,92 @@ func main() {
 
 	slog.Info("------------------------------------------")
 	slog.Info("START scraping new rankings links")
-	rankingsLinksWriter, err := writer.NewWriter[[]string](opts.dataDir)
-	if err != nil {
-		panic(err)
+
+	linksManager := scraper.NewLinksManager(linksOutDir)
+	scrapedNewLinks := linksManager.FilterNewLinks(scraper.ScrapeRankingsLinks())
+
+	bruteforceNewLinks := []string{}
+	if opts.bruteforce.enabled {
+		bruteforcer := scraper.NewBruteforcer(bfLinksOutDir, savedHtmlsFolder, opts.bruteforce.year)
+		bruteforceNewLinks = linksManager.FilterNewLinks(bruteforcer.Start())
 	}
-	newRankingsLinks := scrapeRankingsLinks(&rankingsLinksWriter)
-	slog.Info("END scraping new rankings links", "count", len(newRankingsLinks))
+
+	scrapedLinks, brokenLinks := downloadHTMLs(utils.MergeUnique(scrapedNewLinks, bruteforceNewLinks), savedHtmlsFolder)
+	linksManager.SetNewLinks(scrapedLinks, brokenLinks)
+
+	linksManager.Write(opts.force)
+
+	slog.Info("END scraping new rankings links", "scrapedCount", len(scrapedLinks), "brokenCount", len(brokenLinks))
+
 	slog.Info("------------------------------------------")
-	downloadedCount := 0
-	if len(newRankingsLinks) > 0 {
-		slog.Info("START downloading new rankings")
+}
 
-		htmlRankings := scraper.DownloadRankings(newRankingsLinks)
-		successUrls := make([]string, 0)
-		for _, r := range htmlRankings {
-			successUrls = append(successUrls, r.Url.String())
-			if r.PageCount == 0 {
-				// we add also these ones to the successUrls, because those links are already expired.
-				// Politecnico loves to remove immediately the rankings from public availability, so they
-				// might leave public the link in their "news" section, but they already removed the linked ranking (so stupid...)
-				slog.Error("A ranking is empty. Probably its link is a 404.", "link", r.Url.String())
-				continue
-			}
+func downloadHTMLs(newLinks []string, outDir string) ([]string, []string) {
+	scrapedLinks := []string{}
+	brokenLinks := []string{}
 
-			root := path.Join(opts.dataDir, constants.OutputHtmlFolder, r.Id)
-			rankingsHtmlWriter, err := writer.NewWriter[[]byte](root)
-			if err != nil {
-				panic(err)
-			}
+	if len(newLinks) == 0 {
+		return scrapedLinks, brokenLinks
+	}
 
-			if err := rankingsHtmlWriter.Write(constants.OutputHtmlRanking_IndexFilename, r.Index.Content); err != nil {
-				slog.Error("Could not save ranking index html to filesystem", "ranking_url", r.Url.String())
-				panic(err)
-			}
+	slog.Info("START Download new HTMLs", "newLinks", len(newLinks))
 
-			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByMeritFolder))
-			for _, page := range r.ByMerit {
-				err := rankingsHtmlWriter.Write(page.Id, page.Content)
-				if err != nil {
-					slog.Error("Could not save ranking byMerit table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
-					panic(err)
-				}
-			}
+	downloadedCount := 0 // single html files downloaded count
+	htmlRankings := scraper.DownloadRankings(newLinks)
 
-			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByIdFolder))
-			for _, page := range r.ById {
-				err := rankingsHtmlWriter.Write(page.Id, page.Content)
-				if err != nil {
-					slog.Error("Could not save ranking byId table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
-					panic(err)
-				}
-			}
-
-			rankingsHtmlWriter.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByCourseFolder))
-			for _, page := range r.ByCourse {
-				err := rankingsHtmlWriter.Write(page.Id, page.Content)
-				if err != nil {
-					slog.Error("Could not save ranking byCourse table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
-					panic(err)
-				}
-			}
-
-			downloadedCount += r.PageCount
+	for _, r := range htmlRankings {
+		if r.PageCount == 0 {
+			// Politecnico loves to remove immediately the rankings from public availability, so they
+			// might leave public the link in their "news" section, but they already removed the linked ranking (so stupid...)
+			slog.Error("A ranking is empty. Probably its link is a 404.", "link", r.Url.String())
+			brokenLinks = append(brokenLinks, r.Url.String())
+			continue
 		}
 
-		err = rankingsLinksWriter.AppendLines(constants.OutputLinksFilename, successUrls)
-		if err != nil {
-			slog.Error("Could not append new rankings links to file")
+		root := path.Join(outDir, r.Id) // path of this ranking's html root folder
+		w := writer.NewWriter[[]byte](root)
+
+		if err := w.Write(constants.OutputHtmlRanking_IndexFilename, r.Index.Content); err != nil {
+			slog.Error("Could not save ranking index html to filesystem", "ranking_url", r.Url.String())
 			panic(err)
 		}
-	}
 
-	slog.Info("END", "downloaded page count", downloadedCount)
-	slog.Info("------------------------------------------")
-}
-
-func scrapeRankingsLinks(w *writer.Writer[[]string]) []string {
-	fn := constants.OutputLinksFilename
-	fp := w.GetFilePath(fn)
-	slog := slog.With("filepath", fp)
-
-	savedLinks, err := w.ReadLines(fn)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			slog.Warn("Saved file not found, running scraper...")
-			savedLinks = make([]string, 0)
-		} else {
-			slog.Error("Could not read lines from saved rankings links file. SCRAPER SKIPPED", "error", err)
-			return nil
+		// update writer outDir path to byMerit folder
+		w.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByMeritFolder))
+		for _, page := range r.ByMerit {
+			if err := w.Write(page.Id, page.Content); err != nil {
+				slog.Error("Could not save ranking byMerit table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
+				panic(err)
+			}
 		}
-	} else {
-		slog.Info("already saved rankings links", "count", len(savedLinks))
+
+		// update writer outDir path to byId folder
+		w.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByIdFolder))
+		for _, page := range r.ById {
+			if err := w.Write(page.Id, page.Content); err != nil {
+				slog.Error("Could not save ranking byId table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
+				panic(err)
+			}
+		}
+
+		// update writer outDir path to byCourse folder
+		w.ChangeDirPath(path.Join(root, constants.OutputHtmlRanking_ByCourseFolder))
+		for _, page := range r.ByCourse {
+			if err := w.Write(page.Id, page.Content); err != nil {
+				slog.Error("Could not save ranking byCourse table html to filesystem", "ranking_url", r.Url.String(), "page_id", page.Id)
+				panic(err)
+			}
+		}
+
+		scrapedLinks = append(scrapedLinks, r.Url.String())
+		downloadedCount += r.PageCount
 	}
 
-	newLinks := scraper.ScrapeRankingsLinks(savedLinks)
-	return newLinks
+	slog.Info("END Download new HTMLs", "filesCount", downloadedCount)
+	return scrapedLinks, brokenLinks
 }
 
-func ScrapeManifestiWithLocal(w *writer.Writer[[]scraper.Manifesto], force bool) []scraper.Manifesto {
+func scrapeManifestiWithLocal(w *writer.Writer[[]scraper.Manifesto], force bool) []scraper.Manifesto {
 	fn := constants.OutputManifestiListFilename
 	fp := w.GetFilePath(fn)
 	slog := slog.With("filepath", fp)
@@ -214,7 +205,7 @@ func GetRemoteManifesti() ([]byte, []scraper.Manifesto, error) {
 	return bytes, out.ToList(), err
 }
 
-func DoLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {
+func doLocalEqualsRemoteManifesti(w *writer.Writer[[]scraper.Manifesto]) (bool, error) {
 	localSlice, err := w.JsonRead(constants.OutputManifestiListFilename)
 	if err != nil {
 		return false, err
