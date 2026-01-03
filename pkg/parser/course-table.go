@@ -79,10 +79,6 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 	headerFields := page.Find(".TableDati .elenco-campi th")
 	rows := page.Find(".TableDati-tbody tr")
 
-	if p.Ranking.Id == "2025_20103_5788_html" {
-		slog.Info("help?", "header-count", headerFields.Length(), "row-count", rows.Length())
-	}
-
 	for i, s := range headerFields.EachIter() {
 		firstText, err := utils.GetFirstTextFragment(s)
 		if err != nil {
