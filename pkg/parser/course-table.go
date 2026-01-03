@@ -19,6 +19,11 @@ func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 	if len(p.Ranking.Rows) == 0 {
 		return fmt.Errorf("This ranking does not have Merit table rows, so the course table is not parsed")
 	}
+
+	if len(pages) == 0 {
+		return fmt.Errorf("No course table passed in the parseAllCourseTable func")
+	}
+
 	if p.Ranking.Rows[0].Id == "" {
 		// considering this as expected, so no error returned
 		slog.Warn("This ranking does not have Matricola IDs, so the course table is useless (we can't match data with merit table via the matricola id)", "id", p.Ranking.Id)
@@ -43,43 +48,12 @@ func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 		return fmt.Errorf("Error(s) during ranking table parsing:\n%s", strings.Join(errors, "\n"))
 	}
 
-	for id := range p.Ranking.rowsById {
-		// sorting courses inside each student row
-		slices.SortStableFunc(p.Ranking.rowsById[id].Courses, func(a, b CourseStatus) int {
-			if a.Title < b.Title {
-				return -1
-			}
-			if a.Title > b.Title {
-				return 1
-			}
-
-			if a.Location < b.Location {
-				return -1
-			}
-			if a.Location > b.Location {
-				return 1
-			}
-			return 0
-		})
-	}
-
-	newRows := slices.Collect(maps.Values(p.Ranking.rowsById))
-	// sorting student rows by position in merit table
-	slices.SortStableFunc(newRows, func(a, b StudentRow) int {
-		if a.Position < b.Position {
-			return -1
-		}
-		if a.Position > b.Position {
-			return 1
-		}
-		return 0
-	})
-
-	p.Ranking.Rows = newRows
+	p.Ranking.Rows = slices.Collect(maps.Values(p.Ranking.rowsById))
 	return nil
 }
 
 func (p *RankingParser) parseCourseTable(html []byte) error {
+
 	page, err := utils.LoadLocalHtml(html)
 	if err != nil {
 		return err
@@ -102,7 +76,14 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		sections = append(sections, firstText)
 	}
 
-	for i, s := range page.Find(".TableDati .elenco-campi th").EachIter() {
+	headerFields := page.Find(".TableDati .elenco-campi th")
+	rows := page.Find(".TableDati-tbody tr")
+
+	if p.Ranking.Id == "2025_20103_5788_html" {
+		slog.Info("help?", "header-count", headerFields.Length(), "row-count", rows.Length())
+	}
+
+	for i, s := range headerFields.EachIter() {
 		firstText, err := utils.GetFirstTextFragment(s)
 		if err != nil {
 			return err
@@ -147,7 +128,7 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		}
 	}
 
-	for _, row := range page.Find(".TableDati-tbody tr").EachIter() {
+	for _, row := range rows.EachIter() {
 		items := row.Find("td").Map(func(i int, s *goquery.Selection) string { return s.Text() })
 		if len(items) == 1 && strings.Contains(items[0], "Nessun candidato") {
 			slog.Debug("Course table is empty")
@@ -174,7 +155,6 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 
 		p.mu.Lock()
 		s := p.Ranking.rowsById[id] // student row parsed from merit table
-		p.mu.Unlock()
 
 		s.BirthDate = p.getFieldByIndex(items, birthIdx, "")
 
@@ -185,20 +165,24 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 			}
 		}
 
-		ofa := make(map[string]bool, 0)
-		if ofaEngIdx != -1 {
-			ofa["ENG"] = p.getFieldByIndex(items, ofaEngIdx, "No") != "No"
+		if s.Ofa == nil && (ofaEngIdx != -1 || ofaTestIdx != -1) {
+			s.Ofa = make(map[string]bool)
 		}
-		if ofaTestIdx != -1 {
-			ofa["TEST"] = p.getFieldByIndex(items, ofaTestIdx, "No") != "No"
+
+		if _, exists := s.Ofa["ENG"]; !exists && ofaEngIdx != -1 {
+			slog.Info("OFA ENG VALUE", "value", p.getFieldByIndex(items, ofaEngIdx, "No"))
+			s.Ofa["ENG"] = p.getFieldByIndex(items, ofaEngIdx, "No") != "No"
 		}
-		s.Ofa = ofa
+
+		if _, exists := s.Ofa["TEST"]; !exists && ofaTestIdx != -1 {
+			s.Ofa["TEST"] = p.getFieldByIndex(items, ofaTestIdx, "No") != "No"
+		}
 
 		if canEnrollIdx != -1 {
 			c.CanEnroll = p.getFieldByIndex(items, canEnrollIdx, "No") != "No"
 		}
 
-		if firstSectionIdx != -1 {
+		if firstSectionIdx != -1 && s.SectionsResults == nil {
 			sectionsResults := map[string]float32{}
 			for i, section := range sections {
 				idx := i + firstSectionIdx
@@ -211,13 +195,8 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 			s.SectionsResults = sectionsResults
 		}
 
-		if s.Courses == nil {
-			s.Courses = make([]CourseStatus, 0)
-		}
 		s.Courses = append(s.Courses, c)
 
-		// save to map the modified data
-		p.mu.Lock()
 		p.Ranking.rowsById[id] = s // student row parsed from merit table
 		p.mu.Unlock()
 	}

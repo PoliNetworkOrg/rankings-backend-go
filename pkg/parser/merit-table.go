@@ -18,33 +18,31 @@ func (p *RankingParser) parseMeritTable(pages [][]byte) error {
 	errors := make([]string, 0)
 
 	for _, page := range pages {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			newRows, err := p.parseMeritTablePage(page)
-			if err != nil {
-				errors = append(errors, err.Error())
-			}
+		// parallelism
+		// wg.Add(1)
+		// go func() {
+		// 	defer wg.Done()
+		// 	newRows, err := p.parseMeritTablePage(page)
+		// 	if err != nil {
+		// 		errors = append(errors, err.Error())
+		// 	}
+		//
+		// 	rows = slices.Concat(rows, newRows)
+		// }()
 
-			rows = slices.Concat(rows, newRows)
-		}()
+		// no parallelism
+		newRows, err := p.parseMeritTablePage(page)
+		if err != nil {
+			errors = append(errors, err.Error())
+		}
+
+		rows = slices.Concat(rows, newRows)
 	}
 	wg.Wait()
 
 	if len(errors) > 0 {
 		return fmt.Errorf("Error(s) during ranking table parsing:\n%s", strings.Join(errors, "\n"))
 	}
-
-	slices.SortStableFunc(rows, func(a, b StudentRow) int {
-		if a.Position < b.Position {
-			return -1
-		}
-		if a.Position > b.Position {
-			return 1
-		}
-		return 0
-	})
-
 	p.Ranking.Rows = rows
 	return nil
 }
@@ -94,7 +92,7 @@ func (p *RankingParser) parseMeritTablePage(html []byte) ([]StudentRow, error) {
 	}
 
 	for _, row := range page.Find(".TableDati-tbody tr").EachIter() {
-		s := StudentRow{}
+		s := StudentRow{Courses: make([]CourseStatus, 0)}
 		items := row.Find("td").Map(func(i int, s *goquery.Selection) string { return s.Text() })
 		if len(items) == 0 {
 			slog.Error("Error while parsing merit table, empty table row", "ranking-id", p.Ranking.Id)

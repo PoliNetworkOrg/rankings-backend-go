@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"path"
@@ -122,6 +123,8 @@ func (p *RankingParser) Parse() *Ranking {
 		return &p.Ranking
 	}
 
+	p.Ranking.ensureSorting()
+
 	return &p.Ranking
 }
 
@@ -216,4 +219,40 @@ func (r *Ranking) addCourse(title, location string) {
 
 	r.Courses[title] = locations
 	rankingCoursesMutex.Unlock()
+}
+
+func (r *Ranking) ensureSorting() {
+	for name, locations := range r.Courses {
+		slices.Sort(locations)
+		r.Courses[name] = locations
+	}
+
+	for _, row := range r.Rows {
+		// sort row.Courses
+		slices.SortFunc(row.Courses, func(a, b CourseStatus) int {
+			// 1. CanEnroll: true comes before false
+			if a.CanEnroll != b.CanEnroll {
+				if a.CanEnroll {
+					return -1
+				}
+				return 1
+			}
+
+			// 2. Title: Alphabetical (ascending)
+			if n := cmp.Compare(a.Title, b.Title); n != 0 {
+				return n
+			}
+
+			// 3. Location: Alphabetical (ascending)
+			return cmp.Compare(a.Location, b.Location)
+		})
+	}
+
+	slices.SortStableFunc(r.Rows, func(a, b StudentRow) int {
+		if a.Position != b.Position {
+			return cmp.Compare(a.Position, b.Position)
+		}
+
+		return 0
+	})
 }
