@@ -88,7 +88,11 @@ func HttpHeadAll(
 
 				result.StatusCode = resp.StatusCode
 				results[idx] = result
-				slog.Info("[HTTP_HEAD] link OK", "idx", idx, "link", link, "statusCode", resp.StatusCode)
+				if resp.StatusCode == 200 {
+					slog.Debug("[HTTP_HEAD] link 200", "idx", idx, "link", link, "statusCode", resp.StatusCode)
+				} else {
+					slog.Info("[HTTP_HEAD] link not 200", "idx", idx, "link", link, "statusCode", resp.StatusCode)
+				}
 				cancel()
 				wg.Done()
 			}

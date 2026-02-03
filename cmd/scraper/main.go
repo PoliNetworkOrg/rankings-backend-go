@@ -62,6 +62,7 @@ func main() {
 	slog.Info("START scraping new rankings links")
 
 	linksManager := scraper.NewLinksManager(linksOutDir)
+	linksManager.PrintState("init")
 	scrapedNewLinks := linksManager.FilterNewLinks(scraper.ScrapeRankingsLinks())
 
 	bruteforceNewLinks := []string{}
@@ -69,9 +70,11 @@ func main() {
 		bruteforcer := scraper.NewBruteforcer(bfLinksOutDir, savedHtmlsFolder, opts.bruteforce.year)
 		bruteforceNewLinks = linksManager.FilterNewLinks(bruteforcer.Start())
 	}
+	linksManager.PrintState("after bruteforce")
 
 	scrapedLinks, brokenLinks := downloadHTMLs(utils.MergeUnique(scrapedNewLinks, bruteforceNewLinks), savedHtmlsFolder)
 	linksManager.SetNewLinks(scrapedLinks, brokenLinks)
+	linksManager.PrintState("after download HTMLs")
 
 	linksManager.Write(opts.force)
 

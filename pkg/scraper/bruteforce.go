@@ -103,11 +103,12 @@ func (bf *Bruteforcer) write() {
 
 func (bf *Bruteforcer) ReadSavedValidLinks() []string {
 	res, err := bf.writer.JsonRead(bf.getFilename())
-
-	if errors.Is(err, os.ErrNotExist) {
-		slog.Info("[bruteforce] saved valid links (for the specified year) file does not exist", "year", bf.Year, "path", bf.writer.GetFilePath(bf.getFilename()))
-	} else {
-		slog.Error("[bruteforce] error while reading already saved valid links file", "year", bf.Year, "path", bf.writer.GetFilePath(bf.getFilename()), "err", err)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			slog.Info("[bruteforce] saved valid links (for the specified year) file does not exist", "year", bf.Year, "path", bf.writer.GetFilePath(bf.getFilename()))
+		} else {
+			slog.Error("[bruteforce] error while reading already saved valid links file", "year", bf.Year, "path", bf.writer.GetFilePath(bf.getFilename()), "err", err)
+		}
 	}
 
 	return res
@@ -152,6 +153,7 @@ func (bf *Bruteforcer) Start() []string {
 
 	for _, result := range results {
 		if result.StatusCode == 200 {
+			slog.Info("[HTTP_HEAD] link 200", "link", result.Link, "statusCode", result.StatusCode)
 			bf.validLinks = append(bf.validLinks, result.Link)
 		}
 	}

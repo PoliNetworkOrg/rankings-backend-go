@@ -28,11 +28,15 @@ func NewLinksManager(absOutDir string) *LinksManager {
 	return lm
 }
 
+func (lm *LinksManager) PrintState(context string) {
+	slog.Info("[links-manager] STATE", "context", context, "alreadyScraped", len(lm.alreadyScrapedLinks), "alreadyBroken", len(lm.alreadyBrokenLinks), "newScraped", len(lm.newScrapedLinks), "newBroken", len(lm.newBrokenLinks))
+}
+
 func (lm *LinksManager) readAlreadyBroken() {
 	path := lm.writer.GetFilePath(constants.OutputBrokenLinksFilename)
 	links, err := lm.writer.JsonRead(constants.OutputBrokenLinksFilename)
 	if err == nil {
-		lm.alreadyScrapedLinks = links
+		lm.alreadyBrokenLinks = links
 		slog.Info("[links-manager] successfully parsed already broken links file", "count", len(links), "path", path)
 		return
 	}
@@ -109,6 +113,7 @@ func (lm *LinksManager) Write(force bool) {
 	}
 
 	mergedScraped, mergedBroken := lm.mergeLinks()
+	slog.Info("Writing links, counts", "alreadyScraped", len(lm.alreadyScrapedLinks), "alreadyBroken", len(lm.alreadyBrokenLinks), "newScraped", len(lm.newScrapedLinks), "newBroken", len(lm.newBrokenLinks), "mergedScraped", len(mergedScraped), "mergedBroken", len(mergedBroken))
 
 	if len(lm.newScrapedLinks) > 0 || force {
 		lm.writeScraped(mergedScraped, force)
