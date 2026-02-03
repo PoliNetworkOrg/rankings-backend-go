@@ -27,13 +27,14 @@ func stripSchoolPrefix(s string) string {
 }
 
 func (p *Phase) ParseText(raw string, ranking *Ranking) error {
-	slog.Debug("--- STARTING PHASE PARSING ---", "raw", raw, "extra-eu", p.IsExtraEu)
+	slog := slog.With("raw", raw, "extra-eu", p.IsExtraEu)
+	slog.Debug("--- STARTING PHASE PARSING ---")
 	p.Raw = raw
 	// it was common to add a prefix to indicate the School
 	// (I mean, wtf, u already said that in the above heading, but they don't care)
 	// so we strip it
 	schoolStrip := stripSchoolPrefix(raw)
-	slog.Debug("raw phase, stripped by school prefix", "raw", raw, "schoolStrip", schoolStrip)
+	slog.Debug("raw phase, stripped by school prefix", "schoolStrip", schoolStrip)
 
 	// sometimes they alos add a prefix to indicate extra-eu
 	// (again, wtf, u already said that in the following heading, but they don't care)

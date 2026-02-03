@@ -53,7 +53,6 @@ func (p *RankingParser) parseAllCourseTables(pages [][]byte) error {
 }
 
 func (p *RankingParser) parseCourseTable(html []byte) error {
-
 	page, err := utils.LoadLocalHtml(html)
 	if err != nil {
 		return err
@@ -62,10 +61,19 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 	title, location := getCourseTitleLocation((page.Find(".CenterBar .titolo").First()).Text())
 	slog := slog.With("ranking-id", p.Ranking.Id, "course-title", title, "course-location", location)
 	c := CourseStatus{Title: title, Location: location}
-	p.Ranking.addCourse(title, location)
 
 	idIdx, birthIdx, posIdx, canEnrollIdx, engResultIdx, firstSectionIdx, ofaEngIdx, ofaTestIdx := -1, -1, -1, -1, -1, -1, -1, -1
 	sections := make([]string, 0)
+
+	tableHeaderFields := page.Find(".TableDati .elenco-campi th")
+	tableRows := page.Find(".TableDati-tbody tr")
+	if isEmptyTable(tableRows, slog) {
+		// we don't need to return an error, since this is an expected behaviour
+		// since Polimi likes to publish empty tables
+		return nil
+	}
+
+	p.Ranking.addCourse(title, location)
 
 	for _, s := range page.Find(".TableDati tr:not(.elenco-campi) th").EachIter() {
 		firstText, err := utils.GetFirstTextFragment(s)
@@ -76,10 +84,7 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		sections = append(sections, firstText)
 	}
 
-	headerFields := page.Find(".TableDati .elenco-campi th")
-	rows := page.Find(".TableDati-tbody tr")
-
-	for i, s := range headerFields.EachIter() {
+	for i, s := range tableHeaderFields.EachIter() {
 		firstText, err := utils.GetFirstTextFragment(s)
 		if err != nil {
 			return err
@@ -124,13 +129,8 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		}
 	}
 
-	for _, row := range rows.EachIter() {
+	for _, row := range tableRows.EachIter() {
 		items := row.Find("td").Map(func(i int, s *goquery.Selection) string { return s.Text() })
-		if len(items) == 1 && strings.Contains(items[0], "Nessun candidato") {
-			slog.Debug("Course table is empty")
-			continue
-		}
-
 		if len(items) == 0 {
 			slog.Warn("Course table: <tr> contains 0 <td>, more in-depth investigation recommended")
 			continue
@@ -192,12 +192,39 @@ func (p *RankingParser) parseCourseTable(html []byte) error {
 		}
 
 		s.Courses = append(s.Courses, c)
+		if p.Ranking.Id == "2024_20055_66d0_html" {
+			slog.Debug("appending course", "course", c)
+		}
 
 		p.Ranking.rowsById[id] = s // student row parsed from merit table
 		p.mu.Unlock()
 	}
 
 	return nil
+}
+
+func isEmptyTable(tableRows *goquery.Selection, logger *slog.Logger) bool {
+	rowsLen := tableRows.Length()
+	slog := logger.With("rowsLen", rowsLen)
+	if rowsLen == 0 {
+		slog.Debug("isEmptyTable TRUE - reason: no <tr> in table")
+		return true
+	}
+
+	if rowsLen == 1 {
+		items := tableRows.First().Find("td").Map(func(i int, s *goquery.Selection) string { return s.Text() })
+		if len(items) == 0 {
+			slog.Debug("isEmptyTable TRUE - reason: no <td> in <tr>[0]", "tdCount", len(items))
+			return true
+		}
+
+		if len(items) == 1 && strings.Contains(items[0], "Nessun candidato") {
+			slog.Debug("isEmptyTable TRUE - reason: explicit 'Nessun candidato' in <tr>[0] -> <td>[0]", "tdCount", len(items), "td[0].text", items[0])
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *RankingParser) getFieldByIndex(items []string, index int, defaultValue string) string {
