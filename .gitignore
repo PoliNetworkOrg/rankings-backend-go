@@ -23,3 +23,6 @@ go.work.sum
 
 # tmp out dir
 tmp/
+
+# build directory
+bin/
