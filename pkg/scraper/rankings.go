@@ -21,7 +21,7 @@ func ScrapeRankingsLinks() []string {
 func scrapeAvvisiPage() []string {
 	page, res, _, err := utils.LoadHttpHtml(constants.WebPolimiAvvisiFuturiStudentiUrl)
 	if err != nil {
-		log.Fatalf("Error while loading avvisi page. url %s. err: %w", constants.WebPolimiAvvisiFuturiStudentiUrl, err)
+		log.Fatalf("error while loading avvisi page with url %s: %v", constants.WebPolimiAvvisiFuturiStudentiUrl, err)
 	}
 
 	newsLinks := make([]string, 0)

@@ -51,7 +51,7 @@ var car1 = Car{
 	Cost:        18_000,
 	Color:       "red",
 	IsAvailable: true,
-	ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
+	ReleaseDate: time.Date(2023, 10, 0o2, 0, 0, 0, 0, time.UTC),
 }
 
 var car2 = Car{
@@ -60,7 +60,7 @@ var car2 = Car{
 	Cost:        18_000,
 	IsAvailable: true,
 	Brand:       Audi,
-	ReleaseDate: time.Date(2023, 10, 02, 0, 0, 0, 0, time.UTC),
+	ReleaseDate: time.Date(2023, 10, 0o2, 0, 0, 0, 0, time.UTC),
 	Optionals:   []string{"rear-camera", "a/c", "ads", "touchscreen"},
 }
 
@@ -70,7 +70,7 @@ func WriteReadParseCar() {
 		panic(err)
 	}
 
-	w, err := writer.NewWriter[Car](tmpFolder)
+	w := writer.NewWriter[Car](tmpFolder)
 	err = w.JsonWrite("car1.json", car1, false)
 	if err != nil {
 		panic(err)

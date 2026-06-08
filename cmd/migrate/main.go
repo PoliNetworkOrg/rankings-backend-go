@@ -85,14 +85,10 @@ func OrganizeHtml(inputPath string, outDir string) {
 		}
 	}
 
-
 	pathSplitted := strings.Split(inputPath, "/")
 	id := pathSplitted[len(pathSplitted)-1]
 	outRoot := path.Join(outDir, id)
-	w, err := writer.NewWriter[[]byte](outRoot)
-	if err != nil {
-		panic(err)
-	}
+	w := writer.NewWriter[[]byte](outRoot)
 
 	if err := w.Write(constants.OutputHtmlRanking_IndexFilename, index); err != nil {
 		slog.Error("Could not save ranking index html to filesystem", "ranking_url", inputPath)
