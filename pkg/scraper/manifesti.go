@@ -1,17 +1,18 @@
 package scraper
 
 import (
-	"log"
+	"context"
+	"fmt"
 	"log/slog"
-	"reflect"
-	"slices"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/constants"
-	"github.com/PoliNetworkOrg/rankings-backend-go/pkg/utils"
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/sync/errgroup"
 )
 
 type Manifesto struct {
@@ -22,41 +23,61 @@ type Manifesto struct {
 }
 
 func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
-	urls := []string{constants.WebPolimiDesignUrl, constants.WebPolimiArchUrbUrl, constants.WebPolimiIngCivUrl, constants.WebPolimiIngInfIndUrl}
-	// hrefs := []string{}
+	schoolURLs := []string{constants.WebPolimiDesignUrl, constants.WebPolimiArchUrbUrl, constants.WebPolimiIngCivUrl, constants.WebPolimiIngInfIndUrl}
 	out := alreadyScraped
+	mu := sync.Mutex{}
 
-	wg := sync.WaitGroup{}
+	eg, ctx := errgroup.WithContext(context.Background())
+	eg.SetLimit(1)
 
-	alreadyScrapedUrl := make([]string, len(alreadyScraped))
-	for i, as := range alreadyScraped {
-		alreadyScrapedUrl[i] = as.Url
+	alreadyScrapedSet := make(map[string]struct{}, len(alreadyScraped))
+	for _, as := range alreadyScraped {
+		alreadyScrapedSet[as.Url] = struct{}{}
 	}
 
-	for _, url := range urls {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			doc, res, _, err := utils.LoadHttpHtml(url)
+	for _, url := range schoolURLs {
+		eg.Go(func() error {
+			scraper := NewScraper(2, 1)
+
+			ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+			defer cancel()
+
+			slog.Debug("fetching school's website to get manifests page url", "url", url)
+			doc, _, _, err := scraper.LoadHttpHtmlRetry(ctx, url, 5)
 			if err != nil {
-				log.Fatalf("Error while loading school url %s. err: %w", url, err)
+				return fmt.Errorf("error while loading school url %s. err: %w", url, err)
 			}
 
 			var manHref string
+			var innerError error
 			doc.Find(".frame a").Each(func(i int, e *goquery.Selection) {
+				if innerError != nil {
+					return
+				}
+
 				text := strings.ToLower(e.Text())
 				href, ok := e.Attr("href")
 				if strings.Contains(text, "piano di studi") && ok {
-					manHref = href
+					if hrefURL, err := neturl.Parse(href); err == nil {
+						manHref = hrefURL.String()
+					}
 				}
 			})
 
-			doc, res, _, err = utils.LoadHttpHtml(manHref)
-			if err != nil {
-				log.Fatalf("Error while loading manifest url %s. err: %w", manHref, err)
+			if innerError != nil {
+				return innerError
 			}
 
-			finalUrl := res.Request.URL
+			if manHref == "" {
+				return fmt.Errorf("manifest link not found for %s", url)
+			}
+
+			doc, resURL, _, err := scraper.LoadHttpHtmlRetry(ctx, manHref, 5)
+			slog.Debug("fetching school's manifest list", "url", manHref)
+			if err != nil {
+				return fmt.Errorf("error while loading manifest url %s: %w", manHref, err)
+			}
+
 			doc.Find("#id_combocds > tbody > tr:nth-child(3) > td.ElementInfoCard2.left > select > optgroup").Each(func(i int, group *goquery.Selection) {
 				degreeType, ok := group.Attr("label")
 				if !ok {
@@ -66,30 +87,36 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 				degreeType = strings.Split(degreeType, " -")[0]
 
 				group.Children().Each(func(i int, opt *goquery.Selection) {
+					if innerError != nil {
+						return
+					}
+
 					courseName := opt.Text()
 					courseName = strings.Split(courseName, " (")[0]
 
 					value, err := strconv.ParseUint(opt.AttrOr("value", "0"), 10, 64)
 					if err != nil {
-						log.Fatal(err)
-					}
-
-					optUrl := *finalUrl
-					q := optUrl.Query()
-					q.Set("k_corso_la", strconv.FormatUint(value, 10))
-					q.Del("__pj1")
-					q.Del("__pj0")
-					optUrl.RawQuery = q.Encode()
-
-					if slices.Contains(alreadyScrapedUrl, optUrl.String()) {
-						slog.Debug("url already scraped, skipping...", "url", optUrl.String())
+						innerError = err
 						return
 					}
 
-					slog.Debug("found new manifesti url, scraping...", "url", optUrl.String())
-					mandoc, _, _, err := utils.LoadHttpHtml(optUrl.String())
+					optURL := *resURL
+					q := optURL.Query()
+					q.Set("k_corso_la", strconv.FormatUint(value, 10))
+					q.Del("__pj1")
+					q.Del("__pj0")
+					optURL.RawQuery = q.Encode()
+
+					if _, ok := alreadyScrapedSet[optURL.String()]; ok {
+						slog.Debug("url already scraped, skipping...", "url", optURL.String())
+						return
+					}
+
+					slog.Info("found new manifesti url, scraping...", "url", optURL.String())
+					mandoc, _, _, err := scraper.LoadHttpHtmlRetry(ctx, optURL.String(), 5)
 					if err != nil {
-						log.Fatal(err)
+						innerError = err
+						return
 					}
 
 					mandoc.Find("td.CenterBar table.BoxInfoCard tr:nth-child(4) td:nth-child(4)").First().Each(func(i int, loc *goquery.Selection) {
@@ -97,40 +124,42 @@ func ScrapeManifesti(alreadyScraped []Manifesto) []Manifesto {
 						for _, location := range locations {
 							newMan := Manifesto{
 								Name:       strings.TrimSpace(courseName),
-								Url:        optUrl.String(),
+								Url:        optURL.String(),
 								Location:   strings.TrimSpace(location),
 								DegreeType: strings.TrimSpace(degreeType),
 							}
+
+							mu.Lock()
 							out = append(out, newMan)
+							mu.Unlock()
 						}
 					})
 				})
 			})
-		}()
+
+			return innerError
+		})
 	}
 
-	wg.Wait()
+	err := eg.Wait()
+	if err != nil {
+		slog.Error("There was an error while scraping manifesti", "error", err)
+	}
 
 	// because of there are some courses shared between schools, they appears twice
 	// in the list, while we want them only once.
 	// In the future we could also track the School, so it would not cause the issue.
 	// e.g. Design & Engineering (Des, 3I), Geoinformatics Engineering (3I, IngCiv)
 	cleanOut := make([]Manifesto, 0, len(out))
-	for i, m1 := range out[:] {
-		count := 0
-		for _, m2 := range out[i+1:] {
-			if reflect.DeepEqual(m1, m2) {
-				count++
-			}
+	seen := make(map[Manifesto]struct{}, len(out))
+
+	for _, m := range out {
+		if _, ok := seen[m]; ok {
+			continue
 		}
 
-		if count == 0 {
-			cleanOut = append(cleanOut, m1)
-		} else {
-			// found a duplicate, not adding.
-			// it will be added when m1 -> m2 -> ... -> mn, with mn last duplicate
-			slog.Debug("scraper manifesti: found duplicate", "manifesto", m1)
-		}
+		seen[m] = struct{}{}
+		cleanOut = append(cleanOut, m)
 	}
 
 	return cleanOut

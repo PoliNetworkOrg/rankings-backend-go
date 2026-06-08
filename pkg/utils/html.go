@@ -3,24 +3,44 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"html"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
+// Global client sharing cookie state
+var scraperClient *http.Client
+
+func init() {
+	jar, _ := cookiejar.New(nil)
+	scraperClient = &http.Client{
+		// Polimi backend queries can take up to 30-40 seconds under load
+		Timeout: 45 * time.Second,
+		Jar:     jar,
+	}
+}
+
 func LoadHttpHtml(url string) (*goquery.Document, *http.Response, []byte, error) {
-	client := &http.Client{}
+	slog.Debug("Requested HTML from HTTP", "url", url)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+	req.Header.Set("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, nil, nil, err
@@ -41,6 +61,7 @@ func LoadHttpHtml(url string) (*goquery.Document, *http.Response, []byte, error)
 		return nil, nil, nil, err
 	}
 
+	slog.Debug("Recieved HTML from HTTP Request", "url", url, "length", len(htmlBytes))
 	return doc, res, htmlBytes, nil
 }
 
