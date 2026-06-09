@@ -1,4 +1,4 @@
-# [WIP] Rankings Backend (Go)
+# Rankings Backend (Go)
 
 ## Rankings Project Structure
 - Frontend (React/ViteJS): 
@@ -6,11 +6,11 @@
     - Repo: https://github.com/polinetworkorg/Rankings
 
 - Backend: (newer is first)
-    - Go: this repo (WIP)
-    - **C#: https://github.com/PoliNetworkOrg/GraduatorieScriptCSharp (stable)**
+    - Go: this repo (working)
+    - *C#: https://github.com/PoliNetworkOrg/GraduatorieScriptCSharp (deprecated)*
     - *Py: https://github.com/PoliNetworkOrg/GraduatorieScript (deprecated)*
 
-- Data: https://github.com/PoliNetworkOrg/RankingsDati
+- Data: https://github.com/PoliNetworkOrg/rankings-data
 
 
 ## Usage
