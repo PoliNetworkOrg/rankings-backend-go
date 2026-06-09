@@ -34,7 +34,7 @@ builds:
     id: "scraper"
     no_unique_dist_dir: true
     binary: >-
-      scrape_{{ .Os }}_{{ .Arch }}
+      scraper_{{ .Os }}_{{ .Arch }}
     env:
       - CGO_ENABLED=0
     goarch:
@@ -45,7 +45,9 @@ builds:
       - windows
 
 archives:
-  - format: binary
+  - formats: [binary]
+    name_template: >-
+      {{ .Binary }}
 
 changelog:
   sort: asc
