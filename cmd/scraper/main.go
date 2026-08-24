@@ -50,6 +50,7 @@ func main() {
 
 	slog.Info("successfully written manifesti to file!")
 
+ /*
 	manEquals, err := doLocalEqualsRemoteManifesti(&mansWriter)
 	if err != nil {
 		slog.Error("cannot perform comparison between local and remote versions", "err", err)
@@ -57,6 +58,7 @@ func main() {
 	}
 
 	slog.Info("Scrape manifesti, equals to remote version??", "equals", manEquals)
+ */
 
 	slog.Info("------------------------------------------")
 	slog.Info("START scraping new rankings links")
